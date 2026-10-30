@@ -211,6 +211,25 @@ body.lib .layout,body.lib #catpage{display:none}
 .pca .btn.ghost{margin-left:auto}
 .pca svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .empty{text-align:center;color:var(--mut);padding:40px 10px;font-size:15px}
+
+body.view .cover{min-height:100svh;position:relative}
+.hint{display:none}
+body.view .hint{display:block;position:absolute;left:0;right:0;bottom:96px;text-align:center;font-size:12px;opacity:.7;animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(6px)}}
+#vprog{display:none}
+body.view #vprog{display:block;position:fixed;top:0;left:0;height:3px;width:0;background:#1f5eff;z-index:60;transition:width .1s}
+body.view .plan{cursor:pointer;transition:transform .2s,box-shadow .2s}
+body.view .plan:hover{transform:translateY(-3px)}
+.sel{display:none}
+body.view .plan.rec .sel{display:block;color:var(--a);font-weight:700;font-size:13px;margin:-8px 0 10px}
+#home{display:none;min-height:calc(100vh - 56px - 110px);place-items:center;padding:20px}
+body.home #home{display:grid}
+body.home{background:#fff}
+body.home .layout,body.home #catpage,body.home #libpage{display:none}
+#homebrand{display:flex;flex-direction:column;align-items:center;gap:18px;opacity:.1;filter:grayscale(1);pointer-events:none;user-select:none;font-weight:800;font-size:30px}
+#homebrand img{max-width:min(70vw,380px);max-height:38vh;object-fit:contain}
+#homebrand .mono{width:120px;height:120px;border-radius:32px;background:#0b1330;color:#fff;display:grid;place-items:center;font-size:60px}
+.brandw{cursor:pointer}
 @media(max-width:900px){.sec,.cover,.cta{padding:32px 22px}}
 @media(max-width:600px){
 .topbar{padding:8px 10px;gap:6px}.topbar b{width:100%}.btn{padding:8px 10px}.topbar select.btn{flex:1 1 150px;max-width:100%}
@@ -230,6 +249,8 @@ body{background:#fff;padding:0!important}
 .sec{break-inside:avoid}.plan,.card{break-inside:avoid}
 .rv{opacity:1!important;transform:none!important}
 .preview:before{display:none}
+body.view .cover{min-height:250mm}
+#vprog,.hint{display:none!important}
 .preview{display:block!important}
 }
 </style>
@@ -269,6 +290,8 @@ body{background:#fff;padding:0!important}
   <div style="display:none"><button id="cBack"></button><button id="cSave"></button></div>
   <div id="catform"></div>
 </div></div>
+<div id="home"><div id="homebrand"></div></div>
+<div id="vprog"></div>
 <div id="dim"></div>
 <div id="toast"></div>
 <div id="pick"><div class="box"><h3 id="pickT"></h3><div id="pickL" style="max-height:50vh;overflow:auto;margin:12px 0"></div>
@@ -336,7 +359,7 @@ async function unpack(c){
 
 /* ---------- cálculo ---------- */
 function totals(d){
-  const sel=d.plans[d.selected]||null;let m=sel?+sel.price||0:0,u=0;
+  const sel=d.plans[d._pick??d.selected]||null;let m=sel?+sel.price||0:0,u=0;
   d.extras.forEach(e=>{if(e.type==='unico')u+=+e.price||0;else m+=+e.price||0});
   const disc=m*(+d.discount||0)/100;
   return{sel,m,u,disc,mt:m-disc};
@@ -349,21 +372,22 @@ const waLink=d=>{
 
 /* ---------- render da proposta ---------- */
 function renderDoc(d){
-  const t=totals(d),a=d.agency,svc=d.services.filter(s=>s.on);
+  const t=totals(d),a=d.agency,svc=d.services.filter(s=>s.on),selI=d._pick??d.selected;
   const who=[d.client.name,d.client.company].filter(Boolean).join(' · ')||'Seu cliente';
   return `
   <section class="cover rv">
     <div class="brand">${a.logo?`<img src="${esc(a.logo)}" alt="">`:''}${!a.logo||a.name?`<span>${esc(a.name)}</span>`:''}</div>
     <div><span class="tag">Proposta comercial</span><h1>${esc(d.title)}</h1><p>Preparada para <b>${esc(who)}</b></p></div>
     <div class="meta"><div><b>Data</b>${esc(d.date)}</div><div><b>Validade</b>${esc(d.validity)} dias</div>${a.site?`<div><b>Site</b>${esc(a.site)}</div>`:''}</div>
+    <div class="hint">Role para ver ↓</div>
   </section>
   ${d.intro?`<section class="sec rv"><h2>Sobre esta <em>proposta</em></h2><p class="sub">Entendemos o seu momento</p><p class="intro">${esc(d.intro)}</p></section>`:''}
   ${svc.length?`<section class="sec rv"><h2>O que vamos <em>entregar</em></h2><p class="sub">Serviços incluídos na parceria</p>
     <div class="grid g3">${svc.map((s,i)=>`<div class="card"><div class="n">${i+1}</div><h3>${esc(s.title)}</h3><p>${esc(s.desc)}</p></div>`).join('')}</div></section>`:''}
   ${d.plans.length?`<section class="sec rv"><h2>Escolha o seu <em>plano</em></h2><p class="sub">Combos mensais pensados para cada fase do negócio</p>
-    <div class="grid g3" style="padding-top:12px">${d.plans.map((p,i)=>`<div class="plan ${i===d.selected?'rec':''}">${i===d.selected?'<span class="badge">Recomendado</span>':''}
+    <div class="grid g3" style="padding-top:12px">${d.plans.map((p,i)=>`<div class="plan ${i===selI?'rec':''}" data-pick="${i}">${i===d.selected?'<span class="badge">Recomendado</span>':''}
       <h3>${esc(p.name)}</h3><div class="price">${brl(p.price)}<small> /mês</small></div>
-      <ul>${lines(p.items).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div></section>`:''}
+      <div class="sel">✓ Selecionado</div><ul>${lines(p.items).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div></section>`:''}
   ${t.sel?`<section class="sec rv"><h2>Seu <em>investimento</em></h2><p class="sub">Resumo do plano selecionado</p>
     <table>
       <tr><td>Plano ${esc(t.sel.name)}</td><td>${brl(t.sel.price)}/mês</td></tr>
@@ -383,12 +407,14 @@ function renderDoc(d){
 let io;
 function paint(){
   const doc=$('#doc');doc.style.setProperty('--a',S.agency.color||'#1f5eff');
+  const seen=new Set([...doc.querySelectorAll('.rv')].map((e,i)=>e.classList.contains('in')?i:-1));
   doc.innerHTML=renderDoc(S);updSum();renderBrand();
   const els=doc.querySelectorAll('.rv');
   if(document.body.classList.contains('view')){
     io&&io.disconnect();
     io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
-    els.forEach(e=>io.observe(e));
+    els.forEach((e,i)=>{if(seen.has(i))e.classList.add('in');else io.observe(e)});
+    const t=totals(S);if(t.sel)$('#vOk').textContent='✅ Aceitar plano '+String(t.sel.name).split('\n')[0];
   }else els.forEach(e=>e.classList.add('in'));
 }
 
@@ -397,7 +423,7 @@ const SINGLE=['agency.whatsapp','agency.email','agency.site','date','ctaBtn'];
 const F=(l,p,v,t='text')=>(t==='text'&&!SINGLE.includes(p))?`<label class="f"><span>${l}</span><textarea class="ag" rows="1" data-p="${p}">${esc(v)}</textarea></label>`:`<label class="f"><span>${l}</span><input type="${t}" data-p="${p}" value="${esc(v)}"></label>`;
 const T=(l,p,v,r=3)=>`<label class="f"><span>${l}</span><textarea class="ag" rows="${r}" data-p="${p}">${esc(v)}</textarea></label>`;
 const STEPS=['Cliente','Serviços','Planos','Investimento','Condições','Revisar'];
-var STEP=1,LAST=1;
+var STEP=1,LAST=1,DIRTY=false;
 const META={
  0:['Sua marca','Seus dados aparecem em todas as propostas.'],
  1:['Para quem é a proposta?','Dados do cliente e a mensagem de abertura.'],
@@ -465,13 +491,14 @@ $('#form').addEventListener('input',e=>{
   const el=e.target,p=el.dataset.p;if(!p)return;
   let v=el.type==='checkbox'?el.checked:el.type==='radio'?+el.value:el.value;
   if(el.type==='number')v=v===''?0:+v;
-  if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);paint();draft();
+  DIRTY=true;if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);paint();draft();
 });
 $('#form').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
   if(act==='pick'){openPick(k);return}
   if(act==='go'){goStep(k);return}
   if(act==='do'){if(k==='dup')$('#bDup').click();else $('#b'+({save:'Save',link:'Link',pdf:'Pdf'}[k])).click();return}
+  if(act==='add'||act==='del')DIRTY=true;
   if(act==='add'){
     if(k==='services')S.services.push({id:uid(),on:true,title:'Novo serviço',desc:''});
     if(k==='plans')S.plans.push({id:uid(),name:'Novo plano',price:0,items:''});
@@ -508,7 +535,7 @@ async function saveCurrent(){
   const q=curRow?sb.from('proposals').update(row).eq('id',curRow.id):sb.from('proposals').insert(row);
   const {data,error}=await q.select('id,public_id').single();
   if(error){toast('Erro ao salvar: '+error.message,true);return null}
-  curRow=data;await refreshSaved();return data;
+  curRow=data;DIRTY=false;await refreshSaved();return data;
 }
 $('#bSave').onclick=async()=>{const r=await saveCurrent();if(r)toast('Proposta salva ✓')};
 $('#saved').onchange=async e=>{
@@ -521,7 +548,7 @@ $('#saved').onchange=async e=>{
   if(error){toast(error.message,true);return}
   S=Object.assign(defaults(),data.data);if(CAT&&CAT.brand)S.agency=Object.assign({},CAT.brand);curRow={id:data.id,public_id:data.public_id};STEP=1;buildForm();paint();
 };
-$('#bNew').onclick=()=>{if(confirm('Começar uma proposta nova? (mantém seus dados da agência)')){const ag=S.agency;S=defaults();S.agency=ag;curRow=null;STEP=1;buildForm();paint();refreshSaved();$('#saved').value=''}};
+$('#bNew').onclick=()=>{if(!DIRTY||confirm('Começar uma proposta nova? O que você não salvou será perdido.')){DIRTY=false;const ag=S.agency;S=defaults();S.agency=ag;curRow=null;STEP=1;buildForm();paint();refreshSaved();$('#saved').value=''}};
 
 function toPdf(){
   const old=document.title;document.title='Proposta - '+(S.client.company||S.client.name||S.agency.name);
@@ -556,9 +583,9 @@ $('#bOut').onclick=async()=>{await sb.auth.signOut();location.href=baseUrl()};
 
 async function startApp(){
   document.body.classList.remove('login');
-  try{const dr=localStorage.getItem('dp_draft');if(dr)S=Object.assign(defaults(),JSON.parse(dr))}catch(e){}
+  
   try{await loadCat();if(CAT.brand)S.agency=Object.assign({},CAT.brand);cacheBrand()}catch(e){}
-  buildForm();paint();refreshSaved();
+  buildForm();paint();refreshSaved();goHome();
 }
 function renderLoginBrand(){
   let b={};try{b=JSON.parse(localStorage.getItem('dp_brand')||'{}')}catch(e){}
@@ -681,9 +708,9 @@ $('#catform').addEventListener('click',e=>{
   if(act==='del')CAT[k].splice(+i,1);
   buildCat();
 });
-async function openCat(n){if(n)CSTEP=n;await loadCat();buildCat();document.body.classList.add('cat');window.scrollTo(0,0)}
+async function openCat(n){if(n)CSTEP=n;await loadCat();buildCat();document.body.classList.remove('lib','home');document.body.classList.add('cat');window.scrollTo(0,0)}
 $('#bCat').onclick=()=>openCat();
-$('#cBack').onclick=()=>document.body.classList.remove('cat');
+$('#cBack').onclick=goHome;
 $('#cSave').onclick=()=>saveCat();
 async function openPick(kind){
   await loadCat();pickKind=kind;const L=CAT[kind]||[];
@@ -707,17 +734,21 @@ const ico=n=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></
 function renderBrand(){
   const a=S.agency,el=$('#hbrand');if(!el)return;
   document.documentElement.style.setProperty('--ac2',a.color||'#1f5eff');
+  const hb=$('#homebrand');if(hb)hb.innerHTML=a.logo?`<img src="${esc(a.logo)}" alt="">`:`<span class="mono">${esc((a.name||'P').trim().charAt(0).toUpperCase())}</span><span>${esc(a.name||'Propostas')}</span>`;
   el.innerHTML=a.logo?`<img src="${esc(a.logo)}" alt="${esc(a.name)}">`:`<span class="mono">${esc((a.name||'P').trim().charAt(0).toUpperCase())}</span><span>${esc(a.name||'Propostas')}</span>`;
 }
 $('#tabs').innerHTML=[['tLib','folder','Propostas'],['tNew','plus','Nova'],['tDup','copy','Duplicar'],['tCat','book','Catálogo'],['tSave','save','Salvar'],['tLink','link','Link','pri']].map(([id,i,l,c])=>`<button class="tab ${c||''}" id="${id}"><span class="ic">${ico(i)}</span>${l}</button>`).join('');
 $('#hPdf').innerHTML=ico('down');$('#hOut').innerHTML=ico('out');
-const leaveCat=()=>document.body.classList.remove('cat','lib');
+const leaveCat=()=>document.body.classList.remove('cat','lib','home');
+function goHome(){document.body.classList.remove('cat','lib');document.body.classList.add('home');window.scrollTo(0,0)}
+const needDoc=()=>document.body.classList.contains('home')&&(toast('Abra ou crie uma proposta primeiro'),true);
 $('#tNew').onclick=()=>{leaveCat();$('#bNew').click()};
-$('#tDup').onclick=()=>{leaveCat();$('#bDup').click()};
-$('#tSave').onclick=()=>$('#bSave').click();
-$('#tLink').onclick=()=>{leaveCat();$('#bLink').click()};
-$('#tCat').onclick=()=>{if(document.body.classList.contains('lib'))leaveCat();document.body.classList.contains('cat')?$('#cBack').click():$('#bCat').click()};
-$('#hPdf').onclick=()=>{leaveCat();$('#bPdf').click()};
+$('#tDup').onclick=()=>{if(needDoc())return;leaveCat();$('#bDup').click()};
+$('#tSave').onclick=()=>{if(needDoc())return;$('#bSave').click()};
+$('#tLink').onclick=()=>{if(needDoc())return;leaveCat();$('#bLink').click()};
+$('#tCat').onclick=()=>document.body.classList.contains('cat')?goHome():openCat();
+$('#hPdf').onclick=()=>{if(needDoc())return;leaveCat();$('#bPdf').click()};
+$('#hbrand').onclick=goHome;
 $('#hOut').onclick=()=>$('#bOut').click();
 new MutationObserver(()=>{$('#tCat').classList.toggle('on',document.body.classList.contains('cat'));$('#tLib').classList.toggle('on',document.body.classList.contains('lib'))}).observe(document.body,{attributes:true,attributeFilter:['class']});
 const cacheBrand=()=>{try{const b=CAT.brand;localStorage.setItem('dp_brand',JSON.stringify({name:b.name,logo:b.logo,color:b.color}))}catch(e){}};
@@ -725,11 +756,11 @@ async function openProposal(id){
   const {data,error}=await sb.from('proposals').select('id,public_id,data').eq('id',id).single();
   if(error){toast(error.message,true);return}
   S=Object.assign(defaults(),data.data);if(CAT&&CAT.brand)S.agency=Object.assign({},CAT.brand);
-  curRow={id:data.id,public_id:data.public_id};STEP=1;leaveCat();buildForm();paint();refreshSaved();window.scrollTo(0,0);
+  curRow={id:data.id,public_id:data.public_id};DIRTY=false;STEP=1;leaveCat();buildForm();paint();refreshSaved();window.scrollTo(0,0);
 }
 let LIB=[];
 async function openLibPage(){
-  document.body.classList.remove('cat');document.body.classList.add('lib');
+  document.body.classList.remove('cat','home');document.body.classList.add('lib');
   $('#libgrid').innerHTML='<p class="empty">Carregando…</p>';
   const {data}=await sb.from('proposals').select('id,public_id,client,title,views,last_viewed_at,updated_at').order('updated_at',{ascending:false});
   LIB=data||[];drawLib();window.scrollTo(0,0);
@@ -760,7 +791,13 @@ $('#libgrid').addEventListener('click',async e=>{
     toast('Proposta excluída');await openLibPage();refreshSaved();
   }
 });
-$('#tLib').onclick=()=>document.body.classList.contains('lib')?leaveCat():openLibPage();
+$('#tLib').onclick=()=>document.body.classList.contains('lib')?goHome():openLibPage();
+
+$('#doc').addEventListener('click',e=>{
+  const c=e.target.closest('[data-pick]');if(!c||!document.body.classList.contains('view'))return;
+  S._pick=+c.dataset.pick;paint();toast('Plano selecionado ✓');
+});
+window.addEventListener('scroll',()=>{if(!document.body.classList.contains('view'))return;const h=document.documentElement.scrollHeight-innerHeight;$('#vprog').style.width=(h>0?scrollY/h*100:0)+'%'},{passive:true});
 init();
 </script>
 </body>

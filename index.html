@@ -180,6 +180,37 @@ body:not(.view):not(.login){padding-bottom:calc(var(--tb) + 16px + env(safe-area
 .logoprev{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .logoprev img{max-height:46px;max-width:180px;background:#f3f5fb;border-radius:8px;padding:6px}
 .cwrap{padding-top:20px}
+
+#login{background:radial-gradient(circle at 80% 0%,#dfe8ff,transparent 55%),var(--bg)}
+#login form{border-radius:22px;padding:32px 28px;max-width:400px;box-shadow:0 20px 60px rgba(11,19,48,.12);border:1px solid var(--line)}
+#login h1{font-size:25px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+#login p{margin-bottom:22px}
+.lbrand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;margin-bottom:22px}
+.lbrand img{max-height:40px;max-width:200px}
+.lbrand .mono{width:38px;height:38px;border-radius:11px;background:var(--ac2,#1f5eff);color:#fff;display:grid;place-items:center;font-size:18px}
+#login .f input{font-size:16px;padding:13px 14px;border-radius:12px}
+#login .f input:focus{outline:none;border-color:#1f5eff;box-shadow:0 0 0 3px rgba(31,94,255,.2)}
+.pw{position:relative}.pw input{padding-right:84px!important}
+.pw button{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:#1f5eff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;padding:8px}
+#login .btn{width:100%;padding:14px;font-size:15px;border-radius:12px;background:#1f5eff;margin-top:4px}
+#login .btn:disabled{opacity:.6}
+#libpage{display:none}
+body.lib #libpage{display:block}
+body.lib .layout,body.lib #catpage{display:none}
+.libq{width:100%;border:1px solid var(--line);border-radius:12px;padding:13px 14px;font:inherit;font-size:16px;background:#fff;margin-bottom:14px}
+.libq:focus{outline:none;border-color:#1f5eff;box-shadow:0 0 0 3px rgba(31,94,255,.2)}
+.pc{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 6px 24px rgba(11,19,48,.05);animation:stepin .3s ease both}
+.pc b{font-size:17px;display:block;overflow-wrap:anywhere}
+.pc .t2{color:var(--mut);font-size:13px;margin-top:2px;overflow-wrap:anywhere}
+.pc .meta2{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px}
+.chip{background:#f3f5fb;border-radius:99px;padding:5px 11px;font-size:12px;color:var(--mut);font-weight:600}
+.chip.hot{background:#e6eeff;color:#1f5eff}
+.pca{display:flex;gap:8px;flex-wrap:wrap}
+.pca .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 13px}
+.pca .btn:not(.pri){background:#eef1f8;color:var(--ink)}
+.pca .btn.ghost{margin-left:auto}
+.pca svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.empty{text-align:center;color:var(--mut);padding:40px 10px;font-size:15px}
 @media(max-width:900px){.sec,.cover,.cta{padding:32px 22px}}
 @media(max-width:600px){
 .topbar{padding:8px 10px;gap:6px}.topbar b{width:100%}.btn{padding:8px 10px}.topbar select.btn{flex:1 1 150px;max-width:100%}
@@ -204,13 +235,21 @@ body{background:#fff;padding:0!important}
 </style>
 </head>
 <body>
-<div id="login"><form id="lf"><h1>📄 Gerador de Propostas</h1><p>Acesso restrito. Entre com seu e-mail e senha.</p>
-<label class="f"><span>E-mail</span><input type="email" id="lEmail" required autocomplete="username"></label>
-<label class="f"><span>Senha</span><input type="password" id="lPass" required autocomplete="current-password"></label>
-<button class="btn pri" type="submit">Entrar</button><div id="loginMsg"></div></form></div>
+<div id="login"><form id="lf">
+<div class="lbrand" id="lbrand"></div>
+<h1>Bem-vindo de volta</h1><p>Entre para criar e enviar suas propostas.</p>
+<label class="f"><span>E-mail</span><input type="email" id="lEmail" required autocomplete="username" placeholder="voce@empresa.com"></label>
+<label class="f"><span>Senha</span><div class="pw"><input type="password" id="lPass" required autocomplete="current-password" placeholder="Sua senha"><button type="button" id="lEye">Mostrar</button></div></label>
+<button class="btn pri" type="submit" id="lGo">Entrar</button><div id="loginMsg"></div>
+</form></div>
 <header class="hdr"><div class="brandw" id="hbrand"></div><button class="hi" id="hPdf" aria-label="Baixar PDF"></button><button class="hi" id="hOut" aria-label="Sair"></button></header>
 <nav class="tabs" id="tabs"></nav>
-<div id="lib"><div class="box"><h3>Propostas salvas</h3><div id="libL" style="max-height:55vh;overflow:auto;margin:12px 0"></div><div style="display:flex;justify-content:flex-end"><button class="btn ghost" id="libX">Fechar</button></div></div></div>
+<div id="libpage"><div class="cwrap">
+  <div class="wtop"><span class="wk">Propostas</span></div>
+  <h2 class="wt">Suas propostas</h2><p class="ws" id="libsub"></p>
+  <input id="libq" class="libq" placeholder="Buscar por cliente ou título…">
+  <div id="libgrid"></div>
+</div></div>
 <div class="topbar">
   <b>📄 Gerador de Propostas</b>
   <button class="btn ghost" id="bNew">Nova</button>
@@ -506,19 +545,28 @@ $('#vOk').onclick=()=>{const u=waLink(S);if(u!=='#')window.open(u,'_blank')};
 $('#lf').addEventListener('submit',async e=>{
   e.preventDefault();$('#loginMsg').textContent='';
   if(!sb){$('#loginMsg').textContent='Configure SB_URL e SB_KEY no arquivo (veja o guia).';return}
+  const go=$('#lGo');go.disabled=true;go.textContent='Entrando…';
   const {error}=await sb.auth.signInWithPassword({email:$('#lEmail').value.trim(),password:$('#lPass').value});
+  go.disabled=false;go.textContent='Entrar';
   if(error){$('#loginMsg').textContent='E-mail ou senha incorretos.';return}
   startApp();
 });
+$('#lEye').onclick=()=>{const i=$('#lPass'),sh=i.type==='password';i.type=sh?'text':'password';$('#lEye').textContent=sh?'Ocultar':'Mostrar'};
 $('#bOut').onclick=async()=>{await sb.auth.signOut();location.href=baseUrl()};
 
 async function startApp(){
   document.body.classList.remove('login');
   try{const dr=localStorage.getItem('dp_draft');if(dr)S=Object.assign(defaults(),JSON.parse(dr))}catch(e){}
-  try{await loadCat();if(CAT.brand)S.agency=Object.assign({},CAT.brand)}catch(e){}
+  try{await loadCat();if(CAT.brand)S.agency=Object.assign({},CAT.brand);cacheBrand()}catch(e){}
   buildForm();paint();refreshSaved();
 }
+function renderLoginBrand(){
+  let b={};try{b=JSON.parse(localStorage.getItem('dp_brand')||'{}')}catch(e){}
+  document.documentElement.style.setProperty('--ac2',b.color||'#1f5eff');
+  $('#lbrand').innerHTML=b.logo?`<img src="${esc(b.logo)}" alt="">`:`<span class="mono">${esc((b.name||'P').trim().charAt(0).toUpperCase())}</span><span>${esc(b.name||'Gerador de Propostas')}</span>`;
+}
 async function init(){
+  renderLoginBrand();
   const qv=new URLSearchParams(location.search).get('v');
   if(qv){
     document.body.classList.add('view');
@@ -606,7 +654,7 @@ async function saveCat(quiet){
   const {data:{user}}=await sb.auth.getUser();
   const {error}=await sb.from('catalog').upsert({owner:user.id,data:CAT,updated_at:new Date().toISOString()});
   if(error){toast('Não consegui salvar o catálogo. Rode o catalogo.sql no Supabase.',true);return false}
-  S.agency=Object.assign({},S.agency,CAT.brand);paint();draft();
+  S.agency=Object.assign({},S.agency,CAT.brand);paint();draft();cacheBrand();
   if(!quiet)toast('Catálogo salvo ✓');return true;
 }
 function onCatLogo(e){
@@ -663,31 +711,56 @@ function renderBrand(){
 }
 $('#tabs').innerHTML=[['tLib','folder','Propostas'],['tNew','plus','Nova'],['tDup','copy','Duplicar'],['tCat','book','Catálogo'],['tSave','save','Salvar'],['tLink','link','Link','pri']].map(([id,i,l,c])=>`<button class="tab ${c||''}" id="${id}"><span class="ic">${ico(i)}</span>${l}</button>`).join('');
 $('#hPdf').innerHTML=ico('down');$('#hOut').innerHTML=ico('out');
-const leaveCat=()=>document.body.classList.remove('cat');
+const leaveCat=()=>document.body.classList.remove('cat','lib');
 $('#tNew').onclick=()=>{leaveCat();$('#bNew').click()};
 $('#tDup').onclick=()=>{leaveCat();$('#bDup').click()};
 $('#tSave').onclick=()=>$('#bSave').click();
 $('#tLink').onclick=()=>{leaveCat();$('#bLink').click()};
-$('#tCat').onclick=()=>document.body.classList.contains('cat')?$('#cBack').click():$('#bCat').click();
+$('#tCat').onclick=()=>{if(document.body.classList.contains('lib'))leaveCat();document.body.classList.contains('cat')?$('#cBack').click():$('#bCat').click()};
 $('#hPdf').onclick=()=>{leaveCat();$('#bPdf').click()};
 $('#hOut').onclick=()=>$('#bOut').click();
-new MutationObserver(()=>$('#tCat').classList.toggle('on',document.body.classList.contains('cat'))).observe(document.body,{attributes:true,attributeFilter:['class']});
-function openLib(){
-  const opts=[...$('#saved').options].filter(o=>o.value&&o.value!=='__del');
-  $('#libL').innerHTML=opts.length?opts.map(o=>`<div class="pk" style="justify-content:space-between"><button data-open="${o.value}" style="flex:1;text-align:left;border:0;background:none;font:inherit;cursor:pointer;color:inherit;padding:2px 0">${esc(o.textContent)}</button><button class="btn sm ghost" data-del="${o.value}" aria-label="Excluir" style="width:34px;height:34px;display:grid;place-items:center;padding:0">${ico('trash')}</button></div>`).join(''):'<p class="ws">Nenhuma proposta salva ainda.</p>';
-  $('#lib').classList.add('on');
+new MutationObserver(()=>{$('#tCat').classList.toggle('on',document.body.classList.contains('cat'));$('#tLib').classList.toggle('on',document.body.classList.contains('lib'))}).observe(document.body,{attributes:true,attributeFilter:['class']});
+const cacheBrand=()=>{try{const b=CAT.brand;localStorage.setItem('dp_brand',JSON.stringify({name:b.name,logo:b.logo,color:b.color}))}catch(e){}};
+async function openProposal(id){
+  const {data,error}=await sb.from('proposals').select('id,public_id,data').eq('id',id).single();
+  if(error){toast(error.message,true);return}
+  S=Object.assign(defaults(),data.data);if(CAT&&CAT.brand)S.agency=Object.assign({},CAT.brand);
+  curRow={id:data.id,public_id:data.public_id};STEP=1;leaveCat();buildForm();paint();refreshSaved();window.scrollTo(0,0);
 }
-$('#tLib').onclick=openLib;
-$('#libX').onclick=()=>$('#lib').classList.remove('on');
-$('#libL').addEventListener('click',async e=>{
-  const o=e.target.closest('[data-open]'),d=e.target.closest('[data-del]');
-  if(o){$('#saved').value=o.dataset.open;$('#saved').dispatchEvent(new Event('change'));leaveCat();$('#lib').classList.remove('on')}
-  if(d&&confirm('Excluir esta proposta? O link dela deixará de funcionar.')){
-    await sb.from('proposals').delete().eq('id',d.dataset.del);
-    if(curRow&&curRow.id===d.dataset.del)curRow=null;
-    await refreshSaved();openLib();
+let LIB=[];
+async function openLibPage(){
+  document.body.classList.remove('cat');document.body.classList.add('lib');
+  $('#libgrid').innerHTML='<p class="empty">Carregando…</p>';
+  const {data}=await sb.from('proposals').select('id,public_id,client,title,views,last_viewed_at,updated_at').order('updated_at',{ascending:false});
+  LIB=data||[];drawLib();window.scrollTo(0,0);
+}
+function drawLib(){
+  const q=($('#libq').value||'').toLowerCase(),fd=d=>d?new Date(d).toLocaleDateString('pt-BR'):'';
+  const L=LIB.filter(r=>((r.client||'')+' '+(r.title||'')).toLowerCase().includes(q));
+  $('#libsub').textContent=LIB.length?`${LIB.length} ${LIB.length===1?'proposta salva':'propostas salvas'}. Toque em Abrir para editar.`:'Você ainda não salvou nenhuma proposta.';
+  $('#libgrid').innerHTML=L.length?L.map(r=>`<div class="pc"><b>${esc(r.client||'Sem cliente')}</b><div class="t2">${esc((r.title||'').split('\n')[0])}</div>
+    <div class="meta2"><span class="chip">Atualizada em ${fd(r.updated_at)}</span><span class="chip ${r.views?'hot':''}">${r.views||0} ${r.views===1?'visualização':'visualizações'}${r.last_viewed_at?' · última em '+fd(r.last_viewed_at):''}</span></div>
+    <div class="pca"><button class="btn pri" data-lo="${r.id}">Abrir</button><button class="btn" data-lc="${r.public_id}">${ico('link')}Copiar link</button><button class="btn" data-ld="${r.id}">${ico('copy')}Duplicar</button><button class="btn ghost" data-lx="${r.id}" aria-label="Excluir">${ico('trash')}</button></div></div>`).join(''):`<p class="empty">${LIB.length?'Nenhuma proposta encontrada.':'Crie sua primeira proposta pela aba Nova.'}</p>`;
+}
+$('#libq').addEventListener('input',drawLib);
+$('#libgrid').addEventListener('click',async e=>{
+  const o=e.target.closest('[data-lo]'),c=e.target.closest('[data-lc]'),d=e.target.closest('[data-ld]'),x=e.target.closest('[data-lx]');
+  if(o)return openProposal(o.dataset.lo);
+  if(c){const u=baseUrl()+'?v='+c.dataset.lc;try{await navigator.clipboard.writeText(u)}catch(er){prompt('Copie o link:',u)}return toast('Link copiado ✓')}
+  if(d){
+    const {data:r,error}=await sb.from('proposals').select('data,client').eq('id',d.dataset.ld).single();
+    if(error)return toast(error.message,true);
+    const nd=JSON.parse(JSON.stringify(r.data));nd.title=(nd.title||'Proposta')+' (cópia)';
+    const ins=await sb.from('proposals').insert({title:nd.title,client:r.client||'',data:nd});
+    if(ins&&ins.error)return toast(ins.error.message,true);
+    toast('Proposta duplicada ✓');await openLibPage();refreshSaved();return;
+  }
+  if(x&&confirm('Excluir esta proposta? O link dela deixará de funcionar.')){
+    await sb.from('proposals').delete().eq('id',x.dataset.lx);if(curRow&&curRow.id===x.dataset.lx)curRow=null;
+    toast('Proposta excluída');await openLibPage();refreshSaved();
   }
 });
+$('#tLib').onclick=()=>document.body.classList.contains('lib')?leaveCat():openLibPage();
 init();
 </script>
 </body>

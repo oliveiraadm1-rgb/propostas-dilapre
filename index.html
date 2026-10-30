@@ -88,10 +88,10 @@ body.login .topbar,body.login .layout{display:none}
 #login h1{font-size:22px;margin-bottom:4px}#login p{color:var(--mut);font-size:13px;margin-bottom:18px}
 #loginMsg{color:#c0262d;font-size:13px;margin-top:10px;min-height:18px}
 #login .btn{width:100%;padding:12px}
-#modal{display:none;position:fixed;inset:0;background:rgba(11,19,48,.6);z-index:50;place-items:center;padding:16px}
-#modal.on{display:grid}
-#modal .box{background:#fff;border-radius:16px;padding:22px;max-width:560px;width:100%}
-#modal h3{margin-bottom:8px}
+#modal,#pick{display:none;position:fixed;inset:0;background:rgba(11,19,48,.6);z-index:50;place-items:center;padding:16px}
+#modal.on,#pick.on{display:grid}
+#modal .box,#pick .box{background:#fff;border-radius:16px;padding:22px;max-width:560px;width:100%}
+#modal h3,#pick h3{margin-bottom:8px}
 #modal textarea{width:100%;height:110px;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;margin:10px 0;word-break:break-all}
 #modal .warn{font-size:12px;color:#8a5a00;background:#fff4dc;padding:8px 10px;border-radius:8px;margin-bottom:8px}
 body.view .topbar,body.view .editor{display:none}
@@ -100,6 +100,23 @@ body.view .preview{padding:0}
 body.view .doc{border-radius:0;box-shadow:none;max-width:920px}
 body.view .floatbar{display:flex;position:fixed;bottom:14px;left:50%;transform:translateX(-50%);gap:8px;z-index:30;background:rgba(11,19,48,.92);backdrop-filter:blur(8px);padding:8px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 body.view{padding-bottom:80px}
+
+.cover h1,.cover p,.card h3,.card p,.plan h3,.plan li,.cta h2,.cta p,.terms li,.steps li,.doc td:first-child{white-space:pre-line}
+textarea.ag{min-height:36px;overflow:hidden;resize:none;line-height:1.4}
+#dim{position:fixed;inset:0;background:rgba(2,5,18,.74);opacity:0;pointer-events:none;transition:opacity .25s;z-index:40}
+#dim.on{opacity:1}
+.f.focus{position:relative;z-index:45;background:#fff;border-radius:12px;padding:10px;margin:-10px -10px 0;box-shadow:0 0 0 1px rgba(0,200,255,.6),0 0 46px rgba(0,170,255,.45)}
+.f.focus span{color:#0a7cff}
+.f.focus input,.f.focus textarea,.f.focus select{outline:none;border-color:#00d0ff;background:#fff;box-shadow:0 0 0 3px rgba(0,208,255,.35),0 0 22px rgba(0,190,255,.85)}
+#catpage{display:none}
+body.cat #catpage{display:block}
+body.cat .layout{display:none}
+.cwrap{max-width:760px;margin:0 auto;padding:24px 16px 90px}
+.chead{display:flex;gap:10px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.chead h2{margin-right:auto;font-size:22px}
+.csub{color:var(--mut);font-size:14px;margin-bottom:16px}
+#catform details{background:#fff}
+.pk{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;font-size:14px}
 @media(max-width:900px){.layout{display:block;height:auto}.editor{border:0}.sec,.cover,.cta{padding:32px 22px}}
 @media print{
 @page{size:A4;margin:10mm}
@@ -121,6 +138,8 @@ body{background:#fff;padding:0!important}
 <div class="topbar">
   <b>📄 Gerador de Propostas</b>
   <button class="btn ghost" id="bNew">Nova</button>
+  <button class="btn ghost" id="bDup">⧉ Duplicar</button>
+  <button class="btn" id="bCat">📚 Catálogo</button>
   <button class="btn" id="bSave">💾 Salvar</button>
   <select class="btn" id="saved"><option value="">Propostas salvas…</option></select>
   <button class="btn" id="bPdf">⬇ Baixar PDF</button>
@@ -131,6 +150,14 @@ body{background:#fff;padding:0!important}
   <div class="editor" id="form"></div>
   <div class="preview"><div class="doc" id="doc"></div></div>
 </div>
+<div id="catpage"><div class="cwrap">
+  <div class="chead"><button class="btn ghost" id="cBack">← Voltar às propostas</button><h2>📚 Meu catálogo</h2><button class="btn pri" id="cSave">Salvar catálogo</button></div>
+  <p class="csub">Cadastre aqui seus serviços, planos e extras. Na hora de montar uma proposta, use o botão “Puxar do catálogo”.</p>
+  <div id="catform"></div>
+</div></div>
+<div id="dim"></div>
+<div id="pick"><div class="box"><h3 id="pickT"></h3><div id="pickL" style="max-height:50vh;overflow:auto;margin:12px 0"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" id="pickNo">Cancelar</button><button class="btn pri" id="pickOk">Adicionar selecionados</button></div></div></div>
 <div class="floatbar">
   <button class="btn" id="vPdf">⬇ Baixar PDF</button>
   <button class="btn pri" id="vOk">✅ Aceitar proposta</button>
@@ -251,8 +278,9 @@ function paint(){
 }
 
 /* ---------- formulário ---------- */
-const F=(l,p,v,t='text')=>`<label class="f"><span>${l}</span><input type="${t}" data-p="${p}" value="${esc(v)}"></label>`;
-const T=(l,p,v,r=3)=>`<label class="f"><span>${l}</span><textarea rows="${r}" data-p="${p}">${esc(v)}</textarea></label>`;
+const SINGLE=['agency.whatsapp','agency.email','agency.site','date','ctaBtn'];
+const F=(l,p,v,t='text')=>(t==='text'&&!SINGLE.includes(p))?`<label class="f"><span>${l}</span><textarea class="ag" rows="1" data-p="${p}">${esc(v)}</textarea></label>`:`<label class="f"><span>${l}</span><input type="${t}" data-p="${p}" value="${esc(v)}"></label>`;
+const T=(l,p,v,r=3)=>`<label class="f"><span>${l}</span><textarea class="ag" rows="${r}" data-p="${p}">${esc(v)}</textarea></label>`;
 function buildForm(){
   const d=S;
   $('#form').innerHTML=`
@@ -269,18 +297,18 @@ function buildForm(){
     <label class="f"><span>Logo (opcional)</span><input type="file" id="logo" accept="image/*"></label>
     ${d.agency.logo?'<button class="btn sm ghost" data-act="rmlogo">Remover logo</button>':''}
   </div></details>
-  <details open><summary>🛠 Serviços</summary><div>
+  <details open><summary>🛠 Serviços</summary><div><button class="btn sm ghost" data-act="pick:services" style="margin-bottom:10px">📚 Puxar do catálogo</button>
     ${d.services.map((s,i)=>`<div class="row"><div class="top"><label><input type="checkbox" data-p="services.${i}.on" ${s.on?'checked':''}> Incluir</label><button class="btn sm ghost" data-act="del:services:${i}">Remover</button></div>
       ${F('Título',`services.${i}.title`,s.title)}${T('Descrição',`services.${i}.desc`,s.desc,3)}</div>`).join('')}
     <button class="btn sm" data-act="add:services">+ Serviço</button>
   </div></details>
-  <details open><summary>📦 Planos / combos</summary><div>
+  <details open><summary>📦 Planos / combos</summary><div><button class="btn sm ghost" data-act="pick:plans" style="margin-bottom:10px">📚 Puxar do catálogo</button>
     ${d.plans.map((p,i)=>`<div class="row"><div class="top"><label><input type="radio" name="sel" data-p="selected" value="${i}" ${d.selected===i?'checked':''}> Recomendado</label><button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
       <div class="two">${F('Nome',`plans.${i}.name`,p.name)}${F('Valor mensal (R$)',`plans.${i}.price`,p.price,'number')}</div>
       ${T('Itens (um por linha)',`plans.${i}.items`,p.items,4)}</div>`).join('')}
     <button class="btn sm" data-act="add:plans">+ Plano</button>
   </div></details>
-  <details><summary>➕ Extras e desconto</summary><div>
+  <details><summary>➕ Extras e desconto</summary><div><button class="btn sm ghost" data-act="pick:extras" style="margin-bottom:10px">📚 Puxar do catálogo</button>
     ${d.extras.map((e,i)=>`<div class="row"><div class="top"><span>Item extra</span><button class="btn sm ghost" data-act="del:extras:${i}">Remover</button></div>
       ${F('Descrição',`extras.${i}.label`,e.label)}
       <div class="two">${F('Valor (R$)',`extras.${i}.price`,e.price,'number')}
@@ -292,7 +320,7 @@ function buildForm(){
     ${T('Condições (uma por linha)','terms',d.terms,5)}${T('Próximos passos (um por linha)','steps',d.steps,4)}
     ${F('Título do final','ctaTitle',d.ctaTitle)}${T('Texto do final','ctaText',d.ctaText,2)}${F('Texto do botão','ctaBtn',d.ctaBtn)}
   </div></details>`;
-  $('#logo')?.addEventListener('change',onLogo);
+  $('#logo')?.addEventListener('change',onLogo);growAll();
 }
 function setPath(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i++)x=x[k[i]];x[k.at(-1)]=v}
 let tm;const draft=()=>{clearTimeout(tm);tm=setTimeout(()=>{try{localStorage.setItem('dp_draft',JSON.stringify(S))}catch(e){}},400)};
@@ -300,10 +328,11 @@ $('#form').addEventListener('input',e=>{
   const el=e.target,p=el.dataset.p;if(!p)return;
   let v=el.type==='checkbox'?el.checked:el.type==='radio'?+el.value:el.value;
   if(el.type==='number')v=v===''?0:+v;
-  setPath(S,p,v);paint();draft();
+  if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);paint();draft();
 });
 $('#form').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
+  if(act==='pick'){openPick(k);return}
   if(act==='add'){
     if(k==='services')S.services.push({id:uid(),on:true,title:'Novo serviço',desc:''});
     if(k==='plans')S.plans.push({id:uid(),name:'Novo plano',price:0,items:''});
@@ -403,6 +432,96 @@ async function init(){
   if(!session){document.body.classList.add('login');return}
   startApp();
 }
+
+/* ---------- melhorias: textarea, foco, catálogo, duplicar ---------- */
+const grow=el=>{if(!el.scrollHeight)return;el.style.height='auto';el.style.height=el.scrollHeight+'px'};
+const growAll=()=>document.querySelectorAll('textarea.ag').forEach(grow);
+document.addEventListener('toggle',e=>{if(e.target.tagName==='DETAILS')growAll()},true);
+
+const dim=$('#dim'),FSEL='#form input:not([type=checkbox]):not([type=radio]):not([type=file]),#form textarea,#form select,#catform input,#catform textarea,#catform select';
+document.addEventListener('focusin',e=>{
+  const el=e.target;if(!el.matches||!el.matches(FSEL))return;
+  document.querySelectorAll('.f.focus').forEach(x=>x.classList.remove('focus'));
+  const f=el.closest('.f');if(f)f.classList.add('focus');dim.classList.add('on');
+});
+document.addEventListener('focusout',()=>setTimeout(()=>{
+  const a=document.activeElement;
+  if(!a||!a.matches||!a.matches(FSEL)){document.querySelectorAll('.f.focus').forEach(x=>x.classList.remove('focus'));dim.classList.remove('on')}
+},0));
+
+$('#bDup').onclick=async()=>{
+  S=JSON.parse(JSON.stringify(S));S.title=(S.title||'Proposta')+' (cópia)';curRow=null;
+  const r=await saveCurrent();buildForm();paint();draft();
+  if(r)alert('Proposta duplicada ✓ Você está editando a cópia.');
+};
+
+let CAT=null,pickKind='';
+const catDefault=()=>{const d=defaults();return{
+  services:d.services.map(x=>({id:uid(),title:x.title,desc:x.desc})),
+  plans:d.plans.map(x=>({id:uid(),name:x.name,price:x.price,items:x.items})),extras:[]}};
+async function loadCat(){
+  if(CAT)return CAT;
+  const {data}=await sb.from('catalog').select('data').maybeSingle();
+  CAT=Object.assign(catDefault(),(data&&data.data)||{});return CAT;
+}
+function buildCat(){
+  const c=CAT;
+  $('#catform').innerHTML=`
+  <details open><summary>🛠 Serviços que você presta</summary><div>
+    ${c.services.map((x,i)=>`<div class="row"><div class="top"><span>Serviço ${i+1}</span><button class="btn sm ghost" data-act="del:services:${i}">Remover</button></div>
+      ${F('Título',`services.${i}.title`,x.title)}${T('Descrição',`services.${i}.desc`,x.desc,3)}</div>`).join('')}
+    <button class="btn sm" data-act="add:services">+ Serviço</button></div></details>
+  <details open><summary>📦 Planos / combos</summary><div>
+    ${c.plans.map((x,i)=>`<div class="row"><div class="top"><span>Plano ${i+1}</span><button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
+      <div class="two">${F('Nome',`plans.${i}.name`,x.name)}${F('Valor mensal (R$)',`plans.${i}.price`,x.price,'number')}</div>
+      ${T('Itens (um por linha)',`plans.${i}.items`,x.items,4)}</div>`).join('')}
+    <button class="btn sm" data-act="add:plans">+ Plano</button></div></details>
+  <details open><summary>➕ Extras</summary><div>
+    ${c.extras.map((x,i)=>`<div class="row"><div class="top"><span>Extra ${i+1}</span><button class="btn sm ghost" data-act="del:extras:${i}">Remover</button></div>
+      ${F('Descrição',`extras.${i}.label`,x.label)}
+      <div class="two">${F('Valor (R$)',`extras.${i}.price`,x.price,'number')}
+      <label class="f"><span>Cobrança</span><select data-p="extras.${i}.type"><option value="mensal" ${x.type!=='unico'?'selected':''}>Mensal</option><option value="unico" ${x.type==='unico'?'selected':''}>Pagamento único</option></select></label></div></div>`).join('')}
+    <button class="btn sm" data-act="add:extras">+ Extra</button></div></details>`;
+  growAll();
+}
+$('#catform').addEventListener('input',e=>{
+  const el=e.target,p=el.dataset.p;if(!p)return;
+  let v=el.value;if(el.type==='number')v=v===''?0:+v;
+  if(el.tagName==='TEXTAREA')grow(el);setPath(CAT,p,v);
+});
+$('#catform').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
+  if(act==='add'){
+    if(k==='services')CAT.services.push({id:uid(),title:'Novo serviço',desc:''});
+    if(k==='plans')CAT.plans.push({id:uid(),name:'Novo plano',price:0,items:''});
+    if(k==='extras')CAT.extras.push({id:uid(),label:'Novo extra',price:0,type:'mensal'});
+  }
+  if(act==='del')CAT[k].splice(+i,1);
+  buildCat();
+});
+$('#bCat').onclick=async()=>{await loadCat();buildCat();document.body.classList.add('cat');window.scrollTo(0,0)};
+$('#cBack').onclick=()=>document.body.classList.remove('cat');
+$('#cSave').onclick=async()=>{
+  const {data:{user}}=await sb.auth.getUser();
+  const {error}=await sb.from('catalog').upsert({owner:user.id,data:CAT,updated_at:new Date().toISOString()});
+  if(error){alert('Erro ao salvar: '+error.message+'\nVerifique se você rodou o catalogo.sql no Supabase.');return}
+  alert('Catálogo salvo ✓');
+};
+async function openPick(kind){
+  await loadCat();pickKind=kind;const L=CAT[kind]||[];
+  const nm=x=>kind==='services'?x.title:kind==='plans'?`${x.name} — ${brl(x.price)}`:`${x.label} — ${brl(x.price)}`;
+  $('#pickT').textContent='Puxar do catálogo: '+({services:'serviços',plans:'planos',extras:'extras'}[kind]);
+  $('#pickL').innerHTML=L.length?L.map((x,i)=>`<label class="pk"><input type="checkbox" value="${i}"><span>${esc(nm(x))}</span></label>`).join(''):'<p style="color:#5b6785;font-size:14px">Catálogo vazio. Cadastre em 📚 Catálogo.</p>';
+  $('#pick').classList.add('on');
+}
+$('#pickNo').onclick=()=>$('#pick').classList.remove('on');
+$('#pickOk').onclick=()=>{
+  const L=CAT[pickKind];
+  document.querySelectorAll('#pickL input:checked').forEach(c=>{
+    const x=JSON.parse(JSON.stringify(L[+c.value]));x.id=uid();if(pickKind==='services')x.on=true;S[pickKind].push(x);
+  });
+  $('#pick').classList.remove('on');buildForm();paint();draft();
+};
 init();
 </script>
 </body>

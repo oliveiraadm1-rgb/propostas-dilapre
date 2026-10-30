@@ -16,9 +16,12 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 .btn.pri{background:var(--a)}
 .btn.ghost{background:#eef1f8;color:var(--ink)}
 .btn.sm{padding:6px 10px;font-size:12px}
-.layout{display:grid;grid-template-columns:410px 1fr;height:calc(100vh - 53px)}
-.editor{overflow:auto;background:#fff;border-right:1px solid var(--line);padding:12px}
-.preview{overflow:auto;padding:24px}
+.layout{display:block}
+.editor{background:#fff;border-bottom:1px solid var(--line);padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:12px;align-items:start}
+.editor details{margin-bottom:0}
+.preview{padding:24px}
+.preview:before{content:"Pré-visualização da proposta";display:block;max-width:880px;margin:0 auto 12px;font-weight:700;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+body.view .preview:before{display:none}
 details{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:0 12px}
 summary{cursor:pointer;font-weight:700;font-size:14px;padding:12px 0}
 details[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
@@ -117,7 +120,15 @@ body.cat .layout{display:none}
 .csub{color:var(--mut);font-size:14px;margin-bottom:16px}
 #catform details{background:#fff}
 .pk{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;font-size:14px}
-@media(max-width:900px){.layout{display:block;height:auto}.editor{border:0}.sec,.cover,.cta{padding:32px 22px}}
+@media(max-width:900px){.sec,.cover,.cta{padding:32px 22px}}
+@media(max-width:600px){
+.topbar{padding:8px 10px;gap:6px}.topbar b{width:100%}.btn{padding:8px 10px}.topbar select.btn{flex:1 1 150px;max-width:100%}
+.editor{padding:10px;gap:10px}.preview{padding:10px}.two{grid-template-columns:1fr}
+.cover{padding:28px 20px;min-height:420px}.sec,.cta{padding:28px 18px}.sec h2,.cta h2{font-size:23px}.doc{border-radius:12px}
+.price{font-size:28px}table{font-size:14px}tr.tot td{font-size:18px}.intro{font-size:16px}
+body.view .doc{border-radius:0}
+body.view .floatbar{width:calc(100% - 20px);justify-content:center}body.view .floatbar .btn{flex:1}
+.cwrap{padding:14px 10px 90px}}
 @media print{
 @page{size:A4;margin:10mm}
 body{background:#fff;padding:0!important}
@@ -127,6 +138,7 @@ body{background:#fff;padding:0!important}
 .cover{min-height:250mm}.cta{break-inside:avoid}
 .sec{break-inside:avoid}.plan,.card{break-inside:avoid}
 .rv{opacity:1!important;transform:none!important}
+.preview:before{display:none}
 }
 </style>
 </head>
@@ -257,7 +269,7 @@ function renderDoc(d){
       <tr class="tot"><td>Total mensal</td><td>${brl(t.mt)}</td></tr>
       ${t.u>0?`<tr><td>Total pagamento único</td><td>${brl(t.u)}</td></tr>`:''}
     </table></section>`:''}
-  ${lines(d.terms).length||lines(d.steps).length?`<section class="sec rv"><div class="grid g3" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:36px">
+  ${lines(d.terms).length||lines(d.steps).length?`<section class="sec rv"><div class="grid g3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:36px">
     ${lines(d.steps).length?`<div><h2>Próximos <em>passos</em></h2><ol class="steps">${lines(d.steps).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`:''}
     ${lines(d.terms).length?`<div><h2>Condições</h2><ul class="terms">${lines(d.terms).map(x=>`<li>${esc(x)}</li>`).join('')}<li>Esta proposta é válida por ${esc(d.validity)} dias.</li></ul></div>`:''}
   </div></section>`:''}

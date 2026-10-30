@@ -174,6 +174,12 @@ body.login .hdr,body.login .tabs,body.view .hdr,body.view .tabs{display:none}
 body:not(.view):not(.login){padding-bottom:calc(var(--tb) + 16px + env(safe-area-inset-bottom))}
 .wnav{bottom:calc(var(--tb) + 14px + env(safe-area-inset-bottom))}
 @media(min-width:700px){.tabs{left:50%;right:auto;transform:translateX(-50%);bottom:14px;width:min(620px,calc(100% - 28px));border:1px solid var(--line);border-radius:22px;box-shadow:0 12px 40px rgba(11,19,48,.16)}}
+
+#toast{position:fixed;left:50%;bottom:calc(var(--tb) + 30px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#0b1330;color:#fff;padding:11px 18px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.3s;z-index:70;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}#toast.err{background:#c0262d}
+.logoprev{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.logoprev img{max-height:46px;max-width:180px;background:#f3f5fb;border-radius:8px;padding:6px}
+.cwrap{padding-top:20px}
 @media(max-width:900px){.sec,.cover,.cta{padding:32px 22px}}
 @media(max-width:600px){
 .topbar{padding:8px 10px;gap:6px}.topbar b{width:100%}.btn{padding:8px 10px}.topbar select.btn{flex:1 1 150px;max-width:100%}
@@ -221,11 +227,11 @@ body{background:#fff;padding:0!important}
   <div class="preview"><div class="doc" id="doc"></div></div>
 </div>
 <div id="catpage"><div class="cwrap">
-  <div class="chead"><button class="btn ghost" id="cBack">← Voltar às propostas</button><h2>📚 Meu catálogo</h2><button class="btn pri" id="cSave">Salvar catálogo</button></div>
-  <p class="csub">Cadastre aqui seus serviços, planos e extras. Na hora de montar uma proposta, use o botão “Puxar do catálogo”.</p>
+  <div style="display:none"><button id="cBack"></button><button id="cSave"></button></div>
   <div id="catform"></div>
 </div></div>
 <div id="dim"></div>
+<div id="toast"></div>
 <div id="pick"><div class="box"><h3 id="pickT"></h3><div id="pickL" style="max-height:50vh;overflow:auto;margin:12px 0"></div>
   <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" id="pickNo">Cancelar</button><button class="btn pri" id="pickOk">Adicionar selecionados</button></div></div></div>
 <div class="floatbar">
@@ -363,7 +369,7 @@ const META={
  6:['Revise e envie','Confira como o cliente vai ver. Depois salve e gere o link.']};
 function goStep(k){
   if(k==='next')STEP=Math.min(6,STEP+1);else if(k==='prev')STEP=Math.max(1,STEP-1);
-  else if(k==='brand'){LAST=STEP||1;STEP=0}else if(k==='back')STEP=LAST||1;else STEP=+k;
+  else if(k==='brand'){openCat(1);return}else if(k==='back')STEP=LAST||1;else STEP=+k;
   buildForm();window.scrollTo({top:0,behavior:'smooth'});
 }
 function updSum(){
@@ -462,10 +468,10 @@ async function saveCurrent(){
   const row={title:S.title,client:S.client.company||S.client.name||'',data:S,updated_at:new Date().toISOString()};
   const q=curRow?sb.from('proposals').update(row).eq('id',curRow.id):sb.from('proposals').insert(row);
   const {data,error}=await q.select('id,public_id').single();
-  if(error){alert('Erro ao salvar: '+error.message);return null}
+  if(error){toast('Erro ao salvar: '+error.message,true);return null}
   curRow=data;await refreshSaved();return data;
 }
-$('#bSave').onclick=async()=>{const r=await saveCurrent();if(r)alert('Proposta salva ✓')};
+$('#bSave').onclick=async()=>{const r=await saveCurrent();if(r)toast('Proposta salva ✓')};
 $('#saved').onchange=async e=>{
   const v=e.target.value;if(!v)return;
   if(v==='__del'){
@@ -473,8 +479,8 @@ $('#saved').onchange=async e=>{
     return;
   }
   const {data,error}=await sb.from('proposals').select('id,public_id,data').eq('id',v).single();
-  if(error){alert(error.message);return}
-  S=Object.assign(defaults(),data.data);curRow={id:data.id,public_id:data.public_id};STEP=1;buildForm();paint();
+  if(error){toast(error.message,true);return}
+  S=Object.assign(defaults(),data.data);if(CAT&&CAT.brand)S.agency=Object.assign({},CAT.brand);curRow={id:data.id,public_id:data.public_id};STEP=1;buildForm();paint();
 };
 $('#bNew').onclick=()=>{if(confirm('Começar uma proposta nova? (mantém seus dados da agência)')){const ag=S.agency;S=defaults();S.agency=ag;curRow=null;STEP=1;buildForm();paint();refreshSaved();$('#saved').value=''}};
 
@@ -509,6 +515,7 @@ $('#bOut').onclick=async()=>{await sb.auth.signOut();location.href=baseUrl()};
 async function startApp(){
   document.body.classList.remove('login');
   try{const dr=localStorage.getItem('dp_draft');if(dr)S=Object.assign(defaults(),JSON.parse(dr))}catch(e){}
+  try{await loadCat();if(CAT.brand)S.agency=Object.assign({},CAT.brand)}catch(e){}
   buildForm();paint();refreshSaved();
 }
 async function init(){
@@ -546,37 +553,68 @@ document.addEventListener('focusout',()=>setTimeout(()=>{
 $('#bDup').onclick=async()=>{
   S=JSON.parse(JSON.stringify(S));S.title=(S.title||'Proposta')+' (cópia)';curRow=null;
   const r=await saveCurrent();buildForm();paint();draft();
-  if(r)alert('Proposta duplicada ✓ Você está editando a cópia.');
+  if(r)toast('Proposta duplicada ✓ Você está editando a cópia');
 };
 
 let CAT=null,pickKind='';
 const catDefault=()=>{const d=defaults();return{
   services:d.services.map(x=>({id:uid(),title:x.title,desc:x.desc})),
-  plans:d.plans.map(x=>({id:uid(),name:x.name,price:x.price,items:x.items})),extras:[]}};
+  plans:d.plans.map(x=>({id:uid(),name:x.name,price:x.price,items:x.items})),extras:[],brand:Object.assign({},S.agency)}};
 async function loadCat(){
   if(CAT)return CAT;
   const {data}=await sb.from('catalog').select('data').maybeSingle();
-  CAT=Object.assign(catDefault(),(data&&data.data)||{});return CAT;
+  CAT=Object.assign(catDefault(),(data&&data.data)||{});CAT.brand=Object.assign({},S.agency,CAT.brand||{});return CAT;
 }
-function buildCat(){
-  const c=CAT;
-  $('#catform').innerHTML=`
-  <details open><summary>🛠 Serviços que você presta</summary><div>
-    ${c.services.map((x,i)=>`<div class="row"><div class="top"><span>Serviço ${i+1}</span><button class="btn sm ghost" data-act="del:services:${i}">Remover</button></div>
+const CSTEPS=['Marca','Serviços','Planos','Extras'];var CSTEP=1;
+const CMETA={1:['Sua marca','Aparece no topo e em todas as propostas.'],2:['Seus serviços','O que você presta. Depois é só puxar na hora da proposta.'],3:['Seus planos e combos','Combos mensais com preço. Puxe na hora de montar a proposta.'],4:['Extras','Itens avulsos: setup, filmagem extra, gestão de verba e o que mais você cobrar.']};
+function toast(m,err){const t=$('#toast');t.textContent=m;t.className='on'+(err?' err':'');clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',2600)}
+function catBody(c){
+  const b=c.brand;
+  if(CSTEP===1)return `${F('Nome da agência','brand.name',b.name)}${F('WhatsApp (com DDD, só números)','brand.whatsapp',b.whatsapp)}
+    <div class="two">${F('E-mail','brand.email',b.email)}${F('Site / Instagram','brand.site',b.site)}</div>
+    ${F('Cor principal','brand.color',b.color,'color')}
+    ${b.logo?`<div class="logoprev"><img src="${esc(b.logo)}" alt="Logo"><button class="btn sm ghost" data-act="rmlogo">Remover logo</button></div>`:''}
+    <label class="f"><span>${b.logo?'Trocar logo':'Logo (opcional)'}</span><input type="file" id="clogo" accept="image/*"></label>`;
+  if(CSTEP===2)return `${c.services.map((x,i)=>`<div class="row"><div class="top"><span>Serviço ${i+1}</span><button class="btn sm ghost" data-act="del:services:${i}">Remover</button></div>
       ${F('Título',`services.${i}.title`,x.title)}${T('Descrição',`services.${i}.desc`,x.desc,3)}</div>`).join('')}
-    <button class="btn sm" data-act="add:services">+ Serviço</button></div></details>
-  <details open><summary>📦 Planos / combos</summary><div>
-    ${c.plans.map((x,i)=>`<div class="row"><div class="top"><span>Plano ${i+1}</span><button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
+    <button class="btn sm" data-act="add:services">+ Serviço</button>`;
+  if(CSTEP===3)return `${c.plans.map((x,i)=>`<div class="row"><div class="top"><span>Plano ${i+1}</span><button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
       <div class="two">${F('Nome',`plans.${i}.name`,x.name)}${F('Valor mensal (R$)',`plans.${i}.price`,x.price,'number')}</div>
       ${T('Itens (um por linha)',`plans.${i}.items`,x.items,4)}</div>`).join('')}
-    <button class="btn sm" data-act="add:plans">+ Plano</button></div></details>
-  <details open><summary>➕ Extras</summary><div>
-    ${c.extras.map((x,i)=>`<div class="row"><div class="top"><span>Extra ${i+1}</span><button class="btn sm ghost" data-act="del:extras:${i}">Remover</button></div>
+    <button class="btn sm" data-act="add:plans">+ Plano</button>`;
+  return `${c.extras.map((x,i)=>`<div class="row"><div class="top"><span>Extra ${i+1}</span><button class="btn sm ghost" data-act="del:extras:${i}">Remover</button></div>
       ${F('Descrição',`extras.${i}.label`,x.label)}
       <div class="two">${F('Valor (R$)',`extras.${i}.price`,x.price,'number')}
       <label class="f"><span>Cobrança</span><select data-p="extras.${i}.type"><option value="mensal" ${x.type!=='unico'?'selected':''}>Mensal</option><option value="unico" ${x.type==='unico'?'selected':''}>Pagamento único</option></select></label></div></div>`).join('')}
-    <button class="btn sm" data-act="add:extras">+ Extra</button></div></details>`;
-  growAll();
+    <button class="btn sm" data-act="add:extras">+ Extra</button>`;
+}
+function buildCat(){
+  const c=CAT,m=CMETA[CSTEP];$('#catform').style.setProperty('--ac',c.brand.color||'#1f5eff');
+  $('#catform').innerHTML=`<div class="wtop"><span class="wk">Meu catálogo · etapa ${CSTEP} de 4</span></div>
+    <div class="prog">${CSTEPS.map((n,i)=>`<button class="seg ${i+1<=CSTEP?'on':''} ${i+1===CSTEP?'cur':''}" data-act="cgo:${i+1}"><span></span><em>${n}</em></button>`).join('')}</div>
+    <div class="wcard step"><h2 class="wt">${m[0]}</h2><p class="ws">${m[1]}</p>${catBody(c)}</div>
+    <div class="wnav">${CSTEP>1?'<button class="btn ghost" data-act="cgo:prev">← Voltar</button>':'<span></span>'}${CSTEP<4?'<button class="btn pri" data-act="cgo:next">Continuar →</button>':'<button class="btn pri" data-act="cgo:save">Salvar catálogo ✓</button>'}</div>`;
+  $('#clogo')?.addEventListener('change',onCatLogo);growAll();
+}
+async function goCat(k){
+  if(k==='save'){const ok=await saveCat();if(ok)$('#cBack').click();return}
+  await saveCat(true);
+  if(k==='next')CSTEP=Math.min(4,CSTEP+1);else if(k==='prev')CSTEP=Math.max(1,CSTEP-1);else CSTEP=+k;
+  buildCat();window.scrollTo({top:0,behavior:'smooth'});
+}
+async function saveCat(quiet){
+  const {data:{user}}=await sb.auth.getUser();
+  const {error}=await sb.from('catalog').upsert({owner:user.id,data:CAT,updated_at:new Date().toISOString()});
+  if(error){toast('Não consegui salvar o catálogo. Rode o catalogo.sql no Supabase.',true);return false}
+  S.agency=Object.assign({},S.agency,CAT.brand);paint();draft();
+  if(!quiet)toast('Catálogo salvo ✓');return true;
+}
+function onCatLogo(e){
+  const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{
+    const h=Math.min(120,im.height),w=im.width*h/im.height;const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    cv.getContext('2d').drawImage(im,0,0,w,h);CAT.brand.logo=cv.toDataURL('image/png');buildCat()};im.src=r.result};
+  r.readAsDataURL(f);
 }
 $('#catform').addEventListener('input',e=>{
   const el=e.target,p=el.dataset.p;if(!p)return;
@@ -585,6 +623,8 @@ $('#catform').addEventListener('input',e=>{
 });
 $('#catform').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
+  if(act==='cgo'){goCat(k);return}
+  if(act==='rmlogo')CAT.brand.logo='';
   if(act==='add'){
     if(k==='services')CAT.services.push({id:uid(),title:'Novo serviço',desc:''});
     if(k==='plans')CAT.plans.push({id:uid(),name:'Novo plano',price:0,items:''});
@@ -593,14 +633,10 @@ $('#catform').addEventListener('click',e=>{
   if(act==='del')CAT[k].splice(+i,1);
   buildCat();
 });
-$('#bCat').onclick=async()=>{await loadCat();buildCat();document.body.classList.add('cat');window.scrollTo(0,0)};
+async function openCat(n){if(n)CSTEP=n;await loadCat();buildCat();document.body.classList.add('cat');window.scrollTo(0,0)}
+$('#bCat').onclick=()=>openCat();
 $('#cBack').onclick=()=>document.body.classList.remove('cat');
-$('#cSave').onclick=async()=>{
-  const {data:{user}}=await sb.auth.getUser();
-  const {error}=await sb.from('catalog').upsert({owner:user.id,data:CAT,updated_at:new Date().toISOString()});
-  if(error){alert('Erro ao salvar: '+error.message+'\nVerifique se você rodou o catalogo.sql no Supabase.');return}
-  alert('Catálogo salvo ✓');
-};
+$('#cSave').onclick=()=>saveCat();
 async function openPick(kind){
   await loadCat();pickKind=kind;const L=CAT[kind]||[];
   const nm=x=>kind==='services'?x.title:kind==='plans'?`${x.name} — ${brl(x.price)}`:`${x.label} — ${brl(x.price)}`;

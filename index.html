@@ -230,6 +230,27 @@ body.home .layout,body.home #catpage,body.home #libpage{display:none}
 #homebrand img{max-width:min(70vw,380px);max-height:38vh;object-fit:contain}
 #homebrand .mono{width:120px;height:120px;border-radius:32px;background:#0b1330;color:#fff;display:grid;place-items:center;font-size:60px}
 .brandw{cursor:pointer}
+
+.lbl{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.chip2{position:relative;text-align:left;border:1.5px solid var(--line);background:#fafbfe;border-radius:14px;padding:12px 44px 12px 14px;cursor:pointer;font-family:inherit;color:var(--ink);transition:.2s}
+.chip2 b{display:block;font-size:14px;overflow-wrap:anywhere}
+.chip2 small{color:var(--mut);font-size:12px}
+.chip2 i{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;background:#e8edfa;color:#1f5eff;display:grid;place-items:center;font-style:normal;font-weight:800}
+.chip2.on{border-color:var(--ac,#1f5eff);background:#eef3ff}
+.chip2.on i{background:var(--ac,#1f5eff);color:#fff}
+.checks{display:grid;gap:6px;margin-bottom:12px}
+.ck{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff;cursor:pointer;font-size:14px}
+.ck span{flex:1;display:flex;justify-content:space-between;gap:8px;overflow-wrap:anywhere}
+.ck small{color:var(--mut);white-space:nowrap}
+.disc{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-bottom:8px}
+.cinfo{background:#eef3ff;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5}
+.note2{background:#fff8e6;border-radius:10px;padding:10px 12px;font-size:13px;color:#7a5600;margin-bottom:14px;line-height:1.5}
+.sp{margin-top:10px;font-weight:800;font-size:17px;color:var(--a)}
+.sp small{font-weight:500;color:var(--mut);font-size:12px}
+.mn{font-size:12px;font-weight:700;color:var(--mut);margin:-6px 0 8px}
+.save{background:color-mix(in srgb,var(--a) 10%,#fff);color:var(--a);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700;margin-bottom:10px;line-height:1.4}
+.save small{font-weight:500;color:var(--mut);display:block;font-size:11px}
 @media(max-width:900px){.sec,.cover,.cta{padding:32px 22px}}
 @media(max-width:600px){
 .topbar{padding:8px 10px;gap:6px}.topbar b{width:100%}.btn{padding:8px 10px}.topbar select.btn{flex:1 1 150px;max-width:100%}
@@ -326,18 +347,10 @@ function defaults(){return{
   title:'Proposta de Marketing Digital',
   date:today(),validity:7,
   intro:'Olá! Preparei esta proposta pensando nos objetivos do seu negócio. Aqui você encontra como vamos posicionar sua marca, atrair mais clientes e transformar suas redes sociais em uma máquina de contatos.',
-  services:[
-    {id:uid(),on:true,title:'Gerenciamento de redes sociais',desc:'Planejamento, calendário editorial, posts estáticos criados com IA, legendas e postagem. Visual premium e consistente com a sua marca.'},
-    {id:uid(),on:true,title:'Captação e edição de vídeos',desc:'Roteiro, gravação e edição de Reels com legendas, motions e trilha, pensados para reter a atenção e gerar contatos.'},
-    {id:uid(),on:true,title:'Gestão de tráfego pago',desc:'Criação, otimização e acompanhamento das campanhas de anúncios. A verba de anúncios é paga à parte, direto na plataforma.'}
-  ],
-  plans:[
-    {id:uid(),name:'Essencial',price:1500,items:'12 posts estáticos por mês\nPlanejamento e legendas\nRelatório mensal'},
-    {id:uid(),name:'Crescimento',price:2500,items:'12 posts estáticos por mês\n4 Reels editados por mês\nGestão de tráfego pago\nRelatório mensal'},
-    {id:uid(),name:'Completo',price:3800,items:'16 posts estáticos por mês\n8 Reels editados por mês\nGestão de tráfego pago\nRelatório + reunião mensal'}
-  ],
-  selected:1,extras:[],discount:0,
-  terms:'Contrato mensal com fidelidade de 3 meses.\nPagamento todo dia 10, via Pix ou boleto.\nA verba de anúncios (tráfego pago) é paga à parte, direto na plataforma.',
+  services:[],
+  plans:[],
+  selected:0,extras:[],discount:0,
+  terms:'Pagamento todo dia 10, via Pix ou boleto.\nA verba de anúncios (tráfego pago) é paga à parte, direto na plataforma.',
   steps:'Você aprova a proposta\nAssinamos o contrato digital\nFazemos o onboarding e começamos a produzir',
   ctaTitle:'Vamos começar?',ctaText:'Clique abaixo e fale comigo para fecharmos o seu plano.',ctaBtn:'Aceitar proposta'
 }}
@@ -358,21 +371,31 @@ async function unpack(c){
 }
 
 /* ---------- cálculo ---------- */
+const ttl=x=>String(x||'').split('\n')[0];
+const svcM=x=>x.type==='unico'?0:(+x.price||0);
+function comboInfo(p,services){
+  const ss=(p.svc||[]).map(id=>services.find(x=>x.id===id)).filter(Boolean);
+  const avulso=ss.length?ss.reduce((a,x)=>a+svcM(x),0):(+p.avulso||0);
+  const price=+p.price||0,save=Math.max(0,avulso-price);
+  return{ss,avulso,price,save,pct:avulso>0?Math.round(save/avulso*100):0,items:[...ss.map(x=>ttl(x.title)),...lines(p.items)]};
+}
 function totals(d){
-  const sel=d.plans[d._pick??d.selected]||null;let m=sel?+sel.price||0:0,u=0;
+  const sel=d.plans.length?(d.plans[d._pick??d.selected]||null):null;let m=0,u=0;
+  if(sel)m=+sel.price||0;
+  else d.services.filter(x=>x.on).forEach(x=>{if(x.type==='unico')u+=+x.price||0;else m+=+x.price||0});
   d.extras.forEach(e=>{if(e.type==='unico')u+=+e.price||0;else m+=+e.price||0});
   const disc=m*(+d.discount||0)/100;
-  return{sel,m,u,disc,mt:m-disc};
+  return{sel,m,u,disc,mt:m-disc,months:sel?(+sel.months||0):0};
 }
 const waLink=d=>{
   const n=String(d.agency.whatsapp||'').replace(/\D/g,'');const t=totals(d);
-  const msg=`Olá! Vi a proposta "${d.title}" e quero avançar${t.sel?` com o plano ${t.sel.name}`:''}.`;
+  const msg=`Olá! Vi a proposta "${ttl(d.title)}" e quero avançar${t.sel?` com o combo ${ttl(t.sel.name)}`:' com os serviços avulsos'}.`;
   return n?`https://wa.me/${n}?text=${encodeURIComponent(msg)}`:'#';
 };
 
 /* ---------- render da proposta ---------- */
 function renderDoc(d){
-  const t=totals(d),a=d.agency,svc=d.services.filter(s=>s.on),selI=d._pick??d.selected;
+  const t=totals(d),a=d.agency,svc=d.services.filter(s=>s.on),selI=d._pick??d.selected,maxM=Math.max(0,...d.plans.map(p=>+p.months||0));
   const who=[d.client.name,d.client.company].filter(Boolean).join(' · ')||'Seu cliente';
   return `
   <section class="cover rv">
@@ -382,23 +405,26 @@ function renderDoc(d){
     <div class="hint">Role para ver ↓</div>
   </section>
   ${d.intro?`<section class="sec rv"><h2>Sobre esta <em>proposta</em></h2><p class="sub">Entendemos o seu momento</p><p class="intro">${esc(d.intro)}</p></section>`:''}
-  ${svc.length?`<section class="sec rv"><h2>O que vamos <em>entregar</em></h2><p class="sub">Serviços incluídos na parceria</p>
-    <div class="grid g3">${svc.map((s,i)=>`<div class="card"><div class="n">${i+1}</div><h3>${esc(s.title)}</h3><p>${esc(s.desc)}</p></div>`).join('')}</div></section>`:''}
-  ${d.plans.length?`<section class="sec rv"><h2>Escolha o seu <em>plano</em></h2><p class="sub">Combos mensais pensados para cada fase do negócio</p>
-    <div class="grid g3" style="padding-top:12px">${d.plans.map((p,i)=>`<div class="plan ${i===selI?'rec':''}" data-pick="${i}">${i===d.selected?'<span class="badge">Recomendado</span>':''}
+  ${svc.length?`<section class="sec rv"><h2>O que vamos <em>entregar</em></h2><p class="sub">${d.plans.length?'Serviços incluídos na parceria':'Valor avulso de cada serviço'}</p>
+    <div class="grid g3">${svc.map((s,i)=>`<div class="card"><div class="n">${i+1}</div><h3>${esc(s.title)}</h3><p>${esc(s.desc)}</p>${+s.price>0?`<div class="sp">${brl(s.price)}<small>${s.type==='unico'?' pagamento único':' /mês avulso'}</small></div>`:''}</div>`).join('')}</div></section>`:''}
+  ${d.plans.length?`<section class="sec rv"><h2>Escolha o seu <em>combo</em></h2><p class="sub">${maxM?`Combos com contrato de permanência mínima de ${maxM} meses`:'Combos pensados para cada fase do negócio'}</p>
+    <div class="grid g3" style="padding-top:12px">${d.plans.map((p,i)=>{const ci=comboInfo(p,svc);return `<div class="plan ${i===selI?'rec':''}" data-pick="${i}">${i===d.selected?'<span class="badge">Recomendado</span>':''}
       <h3>${esc(p.name)}</h3><div class="price">${brl(p.price)}<small> /mês</small></div>
-      <div class="sel">✓ Selecionado</div><ul>${lines(p.items).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div></section>`:''}
-  ${t.sel?`<section class="sec rv"><h2>Seu <em>investimento</em></h2><p class="sub">Resumo do plano selecionado</p>
+      ${+p.months>0?`<div class="mn">Contrato mínimo de ${+p.months} meses</div>`:''}
+      ${ci.save>0?`<div class="save">Economia de ${brl(ci.save)}/mês <small>(${ci.pct}% vs. ${brl(ci.avulso)} avulso)</small></div>`:''}
+      <div class="sel">✓ Selecionado</div><ul>${ci.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`}).join('')}</div></section>`:''}
+  ${(t.sel||svc.some(x=>+x.price>0)||d.extras.length)?`<section class="sec rv"><h2>Seu <em>investimento</em></h2><p class="sub">${t.sel?'Resumo do combo selecionado':'Resumo dos serviços avulsos'}</p>
     <table>
-      <tr><td>Plano ${esc(t.sel.name)}</td><td>${brl(t.sel.price)}/mês</td></tr>
+      ${t.sel?`<tr><td>Combo ${esc(t.sel.name)}</td><td>${brl(t.sel.price)}/mês</td></tr>`:svc.filter(x=>+x.price>0).map(x=>`<tr><td>${esc(x.title)}${x.type==='unico'?' <small style="color:var(--mut)">(pagamento único)</small>':''}</td><td>${brl(x.price)}${x.type==='unico'?'':'/mês'}</td></tr>`).join('')}
       ${d.extras.map(e=>`<tr><td>${esc(e.label)}${e.type==='unico'?' <small style="color:var(--mut)">(pagamento único)</small>':''}</td><td>${brl(e.price)}${e.type==='unico'?'':'/mês'}</td></tr>`).join('')}
       ${t.disc>0?`<tr><td>Desconto (${+d.discount}%)</td><td>− ${brl(t.disc)}</td></tr>`:''}
       <tr class="tot"><td>Total mensal</td><td>${brl(t.mt)}</td></tr>
       ${t.u>0?`<tr><td>Total pagamento único</td><td>${brl(t.u)}</td></tr>`:''}
-    </table></section>`:''}
-  ${lines(d.terms).length||lines(d.steps).length?`<section class="sec rv"><div class="grid g3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:36px">
+    </table>
+    ${t.sel&&t.months?`<div class="note">Combo com contrato de permanência mínima de ${t.months} meses. Valor total do contrato: <b>${brl(t.mt*t.months+t.u)}</b>.</div>`:(t.sel?'':'<div class="note">Serviços contratados avulsamente.</div>')}</section>`:''}
+  ${lines(d.terms).length||lines(d.steps).length||t.months?`<section class="sec rv"><div class="grid g3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:36px">
     ${lines(d.steps).length?`<div><h2>Próximos <em>passos</em></h2><ol class="steps">${lines(d.steps).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`:''}
-    ${lines(d.terms).length?`<div><h2>Condições</h2><ul class="terms">${lines(d.terms).map(x=>`<li>${esc(x)}</li>`).join('')}<li>Esta proposta é válida por ${esc(d.validity)} dias.</li></ul></div>`:''}
+    ${lines(d.terms).length||t.months?`<div><h2>Condições</h2><ul class="terms">${lines(d.terms).map(x=>`<li>${esc(x)}</li>`).join('')}${t.months?`<li>Combo com contrato de permanência mínima de ${t.months} meses.</li>`:''}<li>Esta proposta é válida por ${esc(d.validity)} dias.</li></ul></div>`:''}
   </div></section>`:''}
   <section class="cta rv"><h2>${esc(d.ctaTitle)}</h2><p>${esc(d.ctaText)}</p>
     <a class="big" href="${waLink(d)}" target="_blank" rel="noopener">${esc(d.ctaBtn)}</a>
@@ -414,7 +440,7 @@ function paint(){
     io&&io.disconnect();
     io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
     els.forEach((e,i)=>{if(seen.has(i))e.classList.add('in');else io.observe(e)});
-    const t=totals(S);if(t.sel)$('#vOk').textContent='✅ Aceitar plano '+String(t.sel.name).split('\n')[0];
+    const t=totals(S);$('#vOk').textContent=t.sel?'✅ Aceitar combo '+ttl(t.sel.name):'✅ Aceitar proposta';
   }else els.forEach(e=>e.classList.add('in'));
 }
 
@@ -422,14 +448,14 @@ function paint(){
 const SINGLE=['agency.whatsapp','agency.email','agency.site','date','ctaBtn'];
 const F=(l,p,v,t='text')=>(t==='text'&&!SINGLE.includes(p))?`<label class="f"><span>${l}</span><textarea class="ag" rows="1" data-p="${p}">${esc(v)}</textarea></label>`:`<label class="f"><span>${l}</span><input type="${t}" data-p="${p}" value="${esc(v)}"></label>`;
 const T=(l,p,v,r=3)=>`<label class="f"><span>${l}</span><textarea class="ag" rows="${r}" data-p="${p}">${esc(v)}</textarea></label>`;
-const STEPS=['Cliente','Serviços','Planos','Investimento','Condições','Revisar'];
+const STEPS=['Cliente','Serviços','Combos','Investimento','Condições','Revisar'];
 var STEP=1,LAST=1,DIRTY=false;
 const META={
  0:['Sua marca','Seus dados aparecem em todas as propostas.'],
  1:['Para quem é a proposta?','Dados do cliente e a mensagem de abertura.'],
- 2:['Quais serviços você vai oferecer?','Puxe do catálogo ou escreva na hora. Desmarque o que não entra.'],
- 3:['Quais planos vai apresentar?','Marque o recomendado: ele ganha destaque na proposta.'],
- 4:['Quanto fica o investimento?','Extras, desconto e o total mensal.'],
+ 2:['Quais serviços?','Toque nos serviços do catálogo ou crie um personalizado. Cada um tem o seu valor avulso.'],
+ 3:['Vai oferecer combos?','Combo junta serviços com preço melhor e contrato mínimo. Sem combo, a proposta mostra só os avulsos.'],
+ 4:['Quanto fica o investimento?','Confira o total, adicione extras e desconto.'],
  5:['Condições e fechamento','Regras de pagamento, próximos passos e o convite final.'],
  6:['Revise e envie','Confira como o cliente vai ver. Depois salve e gere o link.']};
 function goStep(k){
@@ -438,8 +464,37 @@ function goStep(k){
   buildForm();window.scrollTo({top:0,behavior:'smooth'});
 }
 function updSum(){
-  const el=$('#sumbox');if(!el)return;const t=totals(S);
-  el.innerHTML=`<div><small>Plano recomendado</small><b>${esc(t.sel?t.sel.name:'—')}</b></div><div><small>Total mensal</small><b>${brl(t.mt)}</b></div>${t.u>0?`<div><small>Pagamento único</small><b>${brl(t.u)}</b></div>`:''}`;
+  const t=totals(S),el=$('#sumbox'),fu=t.u>0?`<div><small>Pagamento único</small><b>${brl(t.u)}</b></div>`:'';
+  if(el)el.innerHTML=t.sel?`<div><small>Combo</small><b>${esc(ttl(t.sel.name))}</b></div><div><small>Total mensal</small><b>${brl(t.mt)}</b></div>${t.months?`<div><small>Contrato mínimo</small><b>${t.months} meses</b></div>`:''}${fu}`:`<div><small>Modalidade</small><b>Serviços avulsos</b></div><div><small>Total mensal</small><b>${brl(t.mt)}</b></div>${fu}`;
+  const e2=$('#sub2');
+  if(e2){let m=0,u=0;S.services.filter(x=>x.on).forEach(x=>{if(x.type==='unico')u+=+x.price||0;else m+=+x.price||0});e2.innerHTML=`<div><small>Soma avulsa mensal</small><b>${brl(m)}</b></div>${u>0?`<div><small>Pagamento único</small><b>${brl(u)}</b></div>`:''}`}
+  refreshCombos(S);
+}
+const cinfoHTML=ci=>ci.avulso>0?`Avulso somado <b>${brl(ci.avulso)}</b> · combo <b>${brl(ci.price)}</b>${ci.save>0?` · economia <b>${brl(ci.save)}/mês (${ci.pct}%)</b>`:''}`:'Marque os serviços para ver a economia.';
+function refreshCombos(obj){
+  const svs=obj===S?S.services.filter(x=>x.on):obj.services;
+  obj.plans.forEach((p,i)=>{const el=$('#cinfo-'+i);if(el)el.innerHTML=cinfoHTML(comboInfo(p,svs))});
+}
+const serviceRow=(x,i,inc)=>`<div class="row"><div class="top">${inc?`<label><input type="checkbox" data-p="services.${i}.on" ${x.on?'checked':''}> Incluir</label>`:`<span>Serviço ${i+1}</span>`}<button class="btn sm ghost" data-act="del:services:${i}">Remover</button></div>
+  ${F('Nome do serviço',`services.${i}.title`,x.title)}${T('O que é / o que está incluso',`services.${i}.desc`,x.desc,3)}
+  <div class="two">${F('Valor avulso (R$)',`services.${i}.price`,x.price??0,'number')}
+  <label class="f"><span>Cobrança</span><select data-p="services.${i}.type"><option value="mensal" ${x.type!=='unico'?'selected':''}>Mensal</option><option value="unico" ${x.type==='unico'?'selected':''}>Pagamento único</option></select></label></div></div>`;
+const comboRow=(p,i,services,rec,showRec)=>{const ci=comboInfo(p,services);
+  return `<div class="row"><div class="top">${showRec?`<label><input type="radio" name="sel" data-p="selected" value="${i}" ${rec?'checked':''}> Recomendado</label>`:`<span>Combo ${i+1}</span>`}<button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
+  ${F('Nome do combo',`plans.${i}.name`,p.name)}
+  <div class="lbl">Serviços incluídos</div>
+  <div class="checks">${services.length?services.map(x=>`<label class="ck"><input type="checkbox" data-svc="${i}:${x.id}" ${(p.svc||[]).includes(x.id)?'checked':''}><span>${esc(ttl(x.title))}<small>${+x.price>0?brl(x.price)+(x.type==='unico'?' único':'/mês'):'sem valor'}</small></span></label>`).join(''):'<p class="ws">Cadastre ou inclua serviços primeiro.</p>'}</div>
+  <div class="two">${F('Preço do combo (R$/mês)',`plans.${i}.price`,p.price,'number')}${F('Contrato mínimo (meses)',`plans.${i}.months`,p.months??3,'number')}</div>
+  <div class="disc">Desconto rápido sobre o avulso: ${[10,15,20].map(n=>`<button class="btn sm ghost" data-act="disc:${i}:${n}">−${n}%</button>`).join('')}</div>
+  <div class="cinfo" id="cinfo-${i}">${cinfoHTML(ci)}</div>
+  ${T('Itens adicionais (um por linha, opcional)',`plans.${i}.items`,p.items,2)}</div>`};
+function toggleSvcIn(obj,el){
+  const [pi,sid]=el.dataset.svc.split(':');const pl=obj.plans[+pi];pl.svc=pl.svc||[];const k=pl.svc.indexOf(sid);
+  if(el.checked&&k<0)pl.svc.push(sid);if(!el.checked&&k>=0)pl.svc.splice(k,1);
+}
+function applyDisc(obj,idx,pct){
+  const svs=obj===S?S.services.filter(x=>x.on):obj.services,p=obj.plans[+idx],ci=comboInfo(p,svs);
+  if(ci.avulso>0)p.price=Math.round(ci.avulso*(1-(+pct)/100));
 }
 function stepBody(d){
   if(STEP===0)return `${F('Nome da agência','agency.name',d.agency.name)}${F('WhatsApp (com DDD, só números)','agency.whatsapp',d.agency.whatsapp)}
@@ -451,15 +506,21 @@ function stepBody(d){
     ${F('Título da proposta','title',d.title)}
     <div class="two">${F('Data','date',d.date)}${F('Validade (dias)','validity',d.validity,'number')}</div>
     ${T('Mensagem de abertura','intro',d.intro,5)}`;
-  if(STEP===2)return `<button class="btn sm ghost" data-act="pick:services" style="margin-bottom:12px">📚 Puxar do catálogo</button>
-    ${d.services.map((x,i)=>`<div class="row"><div class="top"><label><input type="checkbox" data-p="services.${i}.on" ${x.on?'checked':''}> Incluir na proposta</label><button class="btn sm ghost" data-act="del:services:${i}">Remover</button></div>
-      ${F('Título',`services.${i}.title`,x.title)}${T('Descrição',`services.${i}.desc`,x.desc,3)}</div>`).join('')}
-    <button class="btn sm" data-act="add:services">+ Serviço</button>`;
-  if(STEP===3)return `<button class="btn sm ghost" data-act="pick:plans" style="margin-bottom:12px">📚 Puxar do catálogo</button>
-    ${d.plans.map((x,i)=>`<div class="row"><div class="top"><label><input type="radio" name="sel" data-p="selected" value="${i}" ${d.selected===i?'checked':''}> Recomendado</label><button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
-      <div class="two">${F('Nome',`plans.${i}.name`,x.name)}${F('Valor mensal (R$)',`plans.${i}.price`,x.price,'number')}</div>
-      ${T('Itens (um por linha)',`plans.${i}.items`,x.items,4)}</div>`).join('')}
-    <button class="btn sm" data-act="add:plans">+ Plano</button>`;
+  if(STEP===2){
+    const cat=(CAT&&CAT.services)||[];
+    const chips=cat.length?`<div class="lbl">Do seu catálogo · toque para incluir</div><div class="chips">${cat.map(c=>{const on=d.services.some(x=>x.cid===c.id);return `<button class="chip2 ${on?'on':''}" data-act="tsvc:${c.id}"><b>${esc(ttl(c.title))}</b><small>${+c.price>0?brl(c.price)+(c.type==='unico'?' único':'/mês'):'sem valor'}</small><i>${on?'✓':'+'}</i></button>`}).join('')}</div>`:`<p class="note2">Seu catálogo está vazio. Cadastre seus serviços na aba Catálogo ou crie um personalizado abaixo.</p>`;
+    return `${chips}<div class="lbl" style="margin-top:20px">Serviços desta proposta</div><div class="sum" id="sub2"></div>
+      ${d.services.length?d.services.map((x,i)=>serviceRow(x,i,true)).join(''):'<p class="ws">Nenhum serviço ainda. Toque em um serviço acima.</p>'}
+      <button class="btn sm" data-act="add:services">+ Serviço personalizado</button>`;
+  }
+  if(STEP===3){
+    const cat=(CAT&&CAT.plans)||[];
+    const chips=cat.length?`<div class="lbl">Seus combos · toque para incluir</div><div class="chips">${cat.map(c=>{const on=d.plans.some(x=>x.cid===c.id);return `<button class="chip2 ${on?'on':''}" data-act="tcombo:${c.id}"><b>${esc(ttl(c.name))}</b><small>${brl(c.price)}/mês · ${c.months||3} meses</small><i>${on?'✓':'+'}</i></button>`}).join('')}</div>`:'';
+    return `<p class="note2">Sem combo, o cliente vê só os serviços avulsos. Com combo, o contrato tem permanência mínima.</p>${chips}
+      ${d.plans.length?'<div class="lbl" style="margin-top:20px">Combos desta proposta</div>':''}
+      ${d.plans.map((p,i)=>comboRow(p,i,d.services.filter(x=>x.on),d.selected===i,true)).join('')}
+      <button class="btn sm" data-act="add:plans">+ Montar combo aqui</button>`;
+  }
   if(STEP===4)return `<div class="sum" id="sumbox"></div>
     <button class="btn sm ghost" data-act="pick:extras" style="margin-bottom:12px">📚 Puxar do catálogo</button>
     ${d.extras.map((x,i)=>`<div class="row"><div class="top"><span>Item extra</span><button class="btn sm ghost" data-act="del:extras:${i}">Remover</button></div>
@@ -488,23 +549,44 @@ function buildForm(){
 function setPath(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i++)x=x[k[i]];x[k.at(-1)]=v}
 let tm;const draft=()=>{clearTimeout(tm);tm=setTimeout(()=>{try{localStorage.setItem('dp_draft',JSON.stringify(S))}catch(e){}},400)};
 $('#form').addEventListener('input',e=>{
-  const el=e.target,p=el.dataset.p;if(!p)return;
+  const el=e.target;
+  if(el.dataset.svc){toggleSvcIn(S,el);DIRTY=true;paint();draft();return}
+  const p=el.dataset.p;if(!p)return;
   let v=el.type==='checkbox'?el.checked:el.type==='radio'?+el.value:el.value;
   if(el.type==='number')v=v===''?0:+v;
   DIRTY=true;if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);paint();draft();
 });
+const newSvc=c=>({id:uid(),cid:c.id,on:true,title:c.title,desc:c.desc,price:c.price||0,type:c.type||'mensal'});
 $('#form').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
   if(act==='pick'){openPick(k);return}
   if(act==='go'){goStep(k);return}
   if(act==='do'){if(k==='dup')$('#bDup').click();else $('#b'+({save:'Save',link:'Link',pdf:'Pdf'}[k])).click();return}
-  if(act==='add'||act==='del')DIRTY=true;
+  DIRTY=true;
+  if(act==='tsvc'){
+    const j=S.services.findIndex(x=>x.cid===k);
+    if(j>=0){const id=S.services[j].id;S.services.splice(j,1);S.plans.forEach(p=>p.svc=(p.svc||[]).filter(z=>z!==id))}
+    else{const c=CAT.services.find(x=>x.id===k);if(c)S.services.push(newSvc(c))}
+  }
+  if(act==='tcombo'){
+    const j=S.plans.findIndex(x=>x.cid===k);
+    if(j>=0){S.plans.splice(j,1);if(S.selected>=S.plans.length)S.selected=Math.max(0,S.plans.length-1)}
+    else{const c=CAT.plans.find(x=>x.id===k);if(c){
+      const ids=(c.svc||[]).map(sid=>{let ps=S.services.find(x=>x.cid===sid);if(!ps){const cs=CAT.services.find(x=>x.id===sid);if(!cs)return null;ps=newSvc(cs);S.services.push(ps)}return ps.id}).filter(Boolean);
+      S.plans.push({id:uid(),cid:c.id,name:c.name,price:c.price,months:c.months||3,svc:ids,items:c.items||''});
+    }}
+  }
+  if(act==='disc')applyDisc(S,k,i);
   if(act==='add'){
-    if(k==='services')S.services.push({id:uid(),on:true,title:'Novo serviço',desc:''});
-    if(k==='plans')S.plans.push({id:uid(),name:'Novo plano',price:0,items:''});
+    if(k==='services')S.services.push({id:uid(),on:true,title:'Novo serviço',desc:'',price:0,type:'mensal'});
+    if(k==='plans')S.plans.push({id:uid(),name:'Novo combo',price:0,months:3,svc:[],items:''});
     if(k==='extras')S.extras.push({id:uid(),label:'Item extra',price:0,type:'mensal'});
   }
-  if(act==='del'){S[k].splice(+i,1);if(k==='plans'&&S.selected>=S.plans.length)S.selected=Math.max(0,S.plans.length-1)}
+  if(act==='del'){
+    const id=k==='services'?(S.services[+i]||{}).id:null;S[k].splice(+i,1);
+    if(id)S.plans.forEach(p=>p.svc=(p.svc||[]).filter(z=>z!==id));
+    if(k==='plans'&&S.selected>=S.plans.length)S.selected=Math.max(0,S.plans.length-1);
+  }
   if(act==='rmlogo')S.agency.logo='';
   buildForm();paint();draft();
 });
@@ -632,16 +714,24 @@ $('#bDup').onclick=async()=>{
 };
 
 let CAT=null,pickKind='';
-const catDefault=()=>{const d=defaults();return{
-  services:d.services.map(x=>({id:uid(),title:x.title,desc:x.desc})),
-  plans:d.plans.map(x=>({id:uid(),name:x.name,price:x.price,items:x.items})),extras:[],brand:Object.assign({},S.agency)}};
+function sampleCat(){
+  const a=uid(),b=uid(),c=uid();
+  return{services:[
+    {id:a,title:'Gerenciamento de redes sociais',desc:'Planejamento, calendário editorial, posts estáticos criados com IA, legendas e postagem. Visual premium e consistente com a sua marca.',price:1500,type:'mensal'},
+    {id:b,title:'Captação e edição de vídeos',desc:'Roteiro, gravação e edição de Reels com legendas, motions e trilha, pensados para reter a atenção e gerar contatos.',price:1200,type:'mensal'},
+    {id:c,title:'Gestão de tráfego pago',desc:'Criação, otimização e acompanhamento das campanhas de anúncios. A verba de anúncios é paga à parte, direto na plataforma.',price:800,type:'mensal'}],
+   plans:[{id:uid(),name:'Crescimento',price:2400,months:3,svc:[a,b],items:''},{id:uid(),name:'Completo',price:3000,months:3,svc:[a,b,c],items:'Relatório mensal'}],extras:[]};
+}
+const catDefault=()=>Object.assign(sampleCat(),{brand:Object.assign({},S.agency)});
 async function loadCat(){
   if(CAT)return CAT;
   const {data}=await sb.from('catalog').select('data').maybeSingle();
-  CAT=Object.assign(catDefault(),(data&&data.data)||{});CAT.brand=Object.assign({},S.agency,CAT.brand||{});return CAT;
+  CAT=Object.assign(catDefault(),(data&&data.data)||{});
+  CAT.services=CAT.services.map(x=>Object.assign({price:0,type:'mensal'},x));CAT.plans=CAT.plans.map(x=>Object.assign({months:3,svc:[],items:''},x));CAT.extras=CAT.extras||[];
+  CAT.brand=Object.assign({},S.agency,CAT.brand||{});return CAT;
 }
-const CSTEPS=['Marca','Serviços','Planos','Extras'];var CSTEP=1;
-const CMETA={1:['Sua marca','Aparece no topo e em todas as propostas.'],2:['Seus serviços','O que você presta. Depois é só puxar na hora da proposta.'],3:['Seus planos e combos','Combos mensais com preço. Puxe na hora de montar a proposta.'],4:['Extras','Itens avulsos: setup, filmagem extra, gestão de verba e o que mais você cobrar.']};
+const CSTEPS=['Marca','Serviços','Combos','Extras'];var CSTEP=1;
+const CMETA={1:['Sua marca','Aparece no topo e em todas as propostas.'],2:['Seus serviços','O que você presta, o que está incluso e o valor avulso de cada um.'],3:['Seus combos','Junte serviços, defina o preço do combo e o contrato mínimo. Quanto mais serviços, maior a economia.'],4:['Extras','Itens avulsos: setup, filmagem extra, gestão de verba e o que mais você cobrar.']};
 function toast(m,err){const t=$('#toast');t.textContent=m;t.className='on'+(err?' err':'');clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',2600)}
 function catBody(c){
   const b=c.brand;
@@ -650,13 +740,8 @@ function catBody(c){
     ${F('Cor principal','brand.color',b.color,'color')}
     ${b.logo?`<div class="logoprev"><img src="${esc(b.logo)}" alt="Logo"><button class="btn sm ghost" data-act="rmlogo">Remover logo</button></div>`:''}
     <label class="f"><span>${b.logo?'Trocar logo':'Logo (opcional)'}</span><input type="file" id="clogo" accept="image/*"></label>`;
-  if(CSTEP===2)return `${c.services.map((x,i)=>`<div class="row"><div class="top"><span>Serviço ${i+1}</span><button class="btn sm ghost" data-act="del:services:${i}">Remover</button></div>
-      ${F('Título',`services.${i}.title`,x.title)}${T('Descrição',`services.${i}.desc`,x.desc,3)}</div>`).join('')}
-    <button class="btn sm" data-act="add:services">+ Serviço</button>`;
-  if(CSTEP===3)return `${c.plans.map((x,i)=>`<div class="row"><div class="top"><span>Plano ${i+1}</span><button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
-      <div class="two">${F('Nome',`plans.${i}.name`,x.name)}${F('Valor mensal (R$)',`plans.${i}.price`,x.price,'number')}</div>
-      ${T('Itens (um por linha)',`plans.${i}.items`,x.items,4)}</div>`).join('')}
-    <button class="btn sm" data-act="add:plans">+ Plano</button>`;
+  if(CSTEP===2)return `${c.services.map((x,i)=>serviceRow(x,i,false)).join('')}<button class="btn sm" data-act="add:services">+ Serviço</button>`;
+  if(CSTEP===3)return `${c.plans.map((p,i)=>comboRow(p,i,c.services,false,false)).join('')}<button class="btn sm" data-act="add:plans">+ Combo</button>`;
   return `${c.extras.map((x,i)=>`<div class="row"><div class="top"><span>Extra ${i+1}</span><button class="btn sm ghost" data-act="del:extras:${i}">Remover</button></div>
       ${F('Descrição',`extras.${i}.label`,x.label)}
       <div class="two">${F('Valor (R$)',`extras.${i}.price`,x.price,'number')}
@@ -692,20 +777,26 @@ function onCatLogo(e){
   r.readAsDataURL(f);
 }
 $('#catform').addEventListener('input',e=>{
-  const el=e.target,p=el.dataset.p;if(!p)return;
+  const el=e.target;
+  if(el.dataset.svc){toggleSvcIn(CAT,el);refreshCombos(CAT);return}
+  const p=el.dataset.p;if(!p)return;
   let v=el.value;if(el.type==='number')v=v===''?0:+v;
-  if(el.tagName==='TEXTAREA')grow(el);setPath(CAT,p,v);
+  if(el.tagName==='TEXTAREA')grow(el);setPath(CAT,p,v);refreshCombos(CAT);
 });
 $('#catform').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
   if(act==='cgo'){goCat(k);return}
   if(act==='rmlogo')CAT.brand.logo='';
+  if(act==='disc')applyDisc(CAT,k,i);
   if(act==='add'){
-    if(k==='services')CAT.services.push({id:uid(),title:'Novo serviço',desc:''});
-    if(k==='plans')CAT.plans.push({id:uid(),name:'Novo plano',price:0,items:''});
+    if(k==='services')CAT.services.push({id:uid(),title:'Novo serviço',desc:'',price:0,type:'mensal'});
+    if(k==='plans')CAT.plans.push({id:uid(),name:'Novo combo',price:0,months:3,svc:[],items:''});
     if(k==='extras')CAT.extras.push({id:uid(),label:'Novo extra',price:0,type:'mensal'});
   }
-  if(act==='del')CAT[k].splice(+i,1);
+  if(act==='del'){
+    const id=k==='services'?(CAT.services[+i]||{}).id:null;CAT[k].splice(+i,1);
+    if(id)CAT.plans.forEach(p=>p.svc=(p.svc||[]).filter(z=>z!==id));
+  }
   buildCat();
 });
 async function openCat(n){if(n)CSTEP=n;await loadCat();buildCat();document.body.classList.remove('lib','home');document.body.classList.add('cat');window.scrollTo(0,0)}

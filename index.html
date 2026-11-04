@@ -275,6 +275,22 @@ body.view .cover{min-height:250mm}
 .preview{display:block!important}
 }
 .row .top label b{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
+:root{--tb:0px}
+.hdr .tabs{position:static;transform:none;width:auto;left:auto;right:auto;bottom:auto;border:0;box-shadow:none;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0;border-radius:0;flex:1;justify-content:center;gap:4px}
+.hdr .tab{flex:none;flex-direction:row;gap:7px;font-size:13px;padding:7px 12px;border-radius:12px}
+.hdr .tab .ic{width:auto;height:auto;background:none!important;border-radius:0}
+.hdr .tab:hover{background:#f3f5fb}.hdr .tab.on{background:#e6eeff}.hdr .tab.pri{background:#1f5eff;color:#fff}.hdr .tab.pri:hover{background:#1f5eff}
+body:not(.view):not(.login){padding-bottom:16px}
+@media(max-width:699px){
+.hdr{flex-wrap:wrap;height:auto;padding:8px 14px 4px;row-gap:2px}
+.hdr .brandw{flex:1 1 0}
+.hdr .tabs{order:3;flex:1 1 100%;justify-content:space-between;gap:0;padding-top:2px}
+.hdr .tab{flex:1;flex-direction:column;gap:2px;font-size:10px;padding:2px 0}
+.hdr .tab .ic{width:44px;height:28px;border-radius:14px}
+.hdr .tab:hover{background:none}.hdr .tab.on,.hdr .tab.pri{background:none}
+.hdr .tab.on .ic{background:#e6eeff!important}.hdr .tab.pri .ic{background:#1f5eff!important;color:#fff}
+.hdr .tab.pri{color:#1f5eff}
+}
 .offer{display:flex;flex-direction:column;gap:6px;align-items:flex-start;background:#e6eeff;border:1.5px solid #bcd0ff;border-radius:14px;padding:14px;margin-top:16px}
 .offer b{font-size:15px}.offer span{font-size:13px;color:var(--mut)}
 .row .top .pr{font-size:13px;font-weight:700;white-space:nowrap}
@@ -303,8 +319,7 @@ body.view .cover{min-height:250mm}
 <label class="f"><span>Senha</span><div class="pw"><input type="password" id="lPass" required autocomplete="current-password" placeholder="Sua senha"><button type="button" id="lEye">Mostrar</button></div></label>
 <button class="btn pri" type="submit" id="lGo">Entrar</button><div id="loginMsg"></div>
 </form></div>
-<header class="hdr"><div class="brandw" id="hbrand"></div><button class="hi" id="hPdf" aria-label="Baixar PDF"></button><button class="hi" id="hOut" aria-label="Sair"></button></header>
-<nav class="tabs" id="tabs"></nav>
+<header class="hdr"><div class="brandw" id="hbrand"></div><nav class="tabs" id="tabs"></nav><button class="hi" id="hPdf" aria-label="Baixar PDF"></button><button class="hi" id="hOut" aria-label="Sair"></button></header>
 <div id="libpage"><div class="cwrap">
   <div class="wtop"><span class="wk">Propostas</span></div>
   <h2 class="wt">Suas propostas</h2><p class="ws" id="libsub"></p>

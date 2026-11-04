@@ -737,7 +737,7 @@ const grow=el=>{if(!el.scrollHeight)return;el.style.height='auto';el.style.heigh
 const growAll=()=>document.querySelectorAll('textarea.ag').forEach(grow);
 document.addEventListener('toggle',e=>{if(e.target.tagName==='DETAILS')growAll()},true);
 
-const dim=$('#dim'),FSEL='#form input:not([type=checkbox]):not([type=radio]):not([type=file]),#form textarea,#form select,#catform input,#catform textarea,#catform select';
+const dim=$('#dim'),FSEL='#form input:not([type=checkbox]):not([type=radio]):not([type=file]):not([data-qty]),#form textarea,#form select,#catform input:not([type=checkbox]):not([type=radio]):not([type=file]):not([data-qty]),#catform textarea,#catform select';
 document.addEventListener('focusin',e=>{
   const el=e.target;if(!el.matches||!el.matches(FSEL))return;
   document.querySelectorAll('.f.focus').forEach(x=>x.classList.remove('focus'));

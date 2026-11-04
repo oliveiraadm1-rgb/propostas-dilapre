@@ -286,6 +286,11 @@ body.view .cover{min-height:250mm}
 .lflt{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}.lflt button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;font-family:inherit}.lflt button.on{background:#1f5eff;border-color:#1f5eff;color:#fff}
 .pc .fu{color:#a8650a;font-size:12px;font-weight:600;margin-top:6px}
 .pc select.stsel{font-size:12px;padding:4px 8px;border-radius:99px;margin-left:auto}
+.ck{flex-wrap:wrap}.ck span{min-width:150px}
+.ck .qt{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;color:var(--mut);flex:1 1 100%;margin-left:30px}
+.ck .qt input{width:62px;padding:6px 8px;text-align:center;font-size:14px;border-radius:8px}
+.ck input[type=checkbox]:not(:checked)~.qt{display:none}
+.cinfo{font-size:14px}
 </style>
 </head>
 <body>
@@ -389,9 +394,10 @@ const ttl=x=>String(x||'').split('\n')[0];
 const svcM=x=>x.type==='unico'?0:(+x.price||0);
 function comboInfo(p,services){
   const ss=(p.svc||[]).map(id=>services.find(x=>x.id===id)).filter(Boolean);
-  const avulso=ss.length?ss.reduce((a,x)=>a+svcM(x),0):(+p.avulso||0);
+  const q=x=>Math.max(1,Math.round(+(p.qty||{})[x.id]||1));
+  const avulso=ss.length?ss.reduce((a,x)=>a+(+x.price||0)*q(x),0):(+p.avulso||0);
   const price=+p.price||0,save=Math.max(0,avulso-price);
-  return{ss,avulso,price,save,pct:avulso>0?Math.round(save/avulso*100):0,items:[...ss.map(x=>ttl(x.title)),...lines(p.items)]};
+  return{ss,avulso,price,save,pct:avulso>0?Math.round(save/avulso*100):0,items:[...ss.map(x=>(q(x)>1?q(x)+'× ':'')+ttl(x.title)),...lines(p.items)]};
 }
 function totals(d){
   const sel=d.plans.length?(d.plans[d._pick??d.selected]||null):null;let m=0,u=0;
@@ -483,7 +489,7 @@ function updSum(){
   if(e2){let m=0,u=0;S.services.filter(x=>x.on).forEach(x=>{if(x.type==='unico')u+=+x.price||0;else m+=+x.price||0});e2.innerHTML=`<div><small>Soma avulsa mensal</small><b>${brl(m)}</b></div>${u>0?`<div><small>Pagamento único</small><b>${brl(u)}</b></div>`:''}`}
   refreshCombos(S);
 }
-const cinfoHTML=ci=>ci.avulso>0?`Avulso somado <b>${brl(ci.avulso)}</b> · combo <b>${brl(ci.price)}</b>${ci.save>0?` · economia <b>${brl(ci.save)}/mês (${ci.pct}%)</b>`:''}`:'Marque os serviços para ver a economia.';
+const cinfoHTML=ci=>ci.avulso>0?`Total dos serviços selecionados <b>${brl(ci.avulso)}</b> · combo <b>${brl(ci.price)}/mês</b>${ci.save>0?` · economia <b>${brl(ci.save)}/mês (${ci.pct}%)</b>`:''}`:'Marque os serviços para somar o total.';
 function refreshCombos(obj){
   const svs=obj===S?S.services.filter(x=>x.on):obj.services;
   obj.plans.forEach((p,i)=>{const el=$('#cinfo-'+i);if(el)el.innerHTML=cinfoHTML(comboInfo(p,svs))});
@@ -496,18 +502,28 @@ const comboRow=(p,i,services,rec,showRec)=>{const ci=comboInfo(p,services);
   return `<div class="row"><div class="top">${showRec?`<label><input type="radio" name="sel" data-p="selected" value="${i}" ${rec?'checked':''}> Recomendado</label>`:`<span>Combo ${i+1}</span>`}<button class="btn sm ghost" data-act="del:plans:${i}">Remover</button></div>
   ${F('Nome do combo',`plans.${i}.name`,p.name)}
   <div class="lbl">Serviços incluídos</div>
-  <div class="checks">${services.length?services.map(x=>`<label class="ck"><input type="checkbox" data-svc="${i}:${x.id}" ${(p.svc||[]).includes(x.id)?'checked':''}><span>${esc(ttl(x.title))}<small>${+x.price>0?brl(x.price)+(x.type==='unico'?' único':'/mês'):'sem valor'}</small></span></label>`).join(''):'<p class="ws">Cadastre ou inclua serviços primeiro.</p>'}</div>
+  <div class="checks">${services.length?services.map(x=>{const on=(p.svc||[]).includes(x.id),q=Math.max(1,+(p.qty||{})[x.id]||1);return `<label class="ck"><input type="checkbox" data-svc="${i}:${x.id}" ${on?'checked':''}><span>${esc(ttl(x.title))}<small>${+x.price>0?brl(x.price)+(x.type==='unico'?' único':'/mês'):'sem valor'}</small></span><em class="qt">Qtd <input type="number" min="1" step="1" inputmode="numeric" data-qty="${i}:${x.id}" value="${q}"></em></label>`}).join(''):'<p class="ws">Cadastre ou inclua serviços primeiro.</p>'}</div>
   <div class="two">${F('Preço do combo (R$/mês)',`plans.${i}.price`,p.price,'number')}${F('Contrato mínimo (meses)',`plans.${i}.months`,p.months??3,'number')}</div>
-  <div class="disc">Desconto rápido sobre o avulso: ${[10,15,20].map(n=>`<button class="btn sm ghost" data-act="disc:${i}:${n}">−${n}%</button>`).join('')}</div>
+  <div class="disc">Desconto rápido sobre o avulso: ${[0,10,15,20].map(n=>`<button class="btn sm ghost" data-act="disc:${i}:${n}">${n?'−'+n+'%':'Soma'}</button>`).join('')}</div>
   <div class="cinfo" id="cinfo-${i}">${cinfoHTML(ci)}</div>
   ${T('Itens adicionais (um por linha, opcional)',`plans.${i}.items`,p.items,2)}</div>`};
+function recalc(obj,pi){
+  const p=obj.plans[+pi];if(!p)return;
+  if(p.pct!=null)applyDisc(obj,pi,p.pct);
+  const inp=document.querySelector((obj===S?'#form':'#catform')+' [data-p="plans.'+pi+'.price"]');if(inp)inp.value=p.price;
+}
 function toggleSvcIn(obj,el){
   const [pi,sid]=el.dataset.svc.split(':');const pl=obj.plans[+pi];pl.svc=pl.svc||[];const k=pl.svc.indexOf(sid);
   if(el.checked&&k<0)pl.svc.push(sid);if(!el.checked&&k>=0)pl.svc.splice(k,1);
+  recalc(obj,pi);
+}
+function setQty(obj,el){
+  const [pi,sid]=el.dataset.qty.split(':');const pl=obj.plans[+pi];pl.qty=pl.qty||{};
+  pl.qty[sid]=Math.max(1,Math.round(+el.value)||1);recalc(obj,pi);
 }
 function applyDisc(obj,idx,pct){
   const svs=obj===S?S.services.filter(x=>x.on):obj.services,p=obj.plans[+idx],ci=comboInfo(p,svs);
-  if(ci.avulso>0)p.price=Math.round(ci.avulso*(1-(+pct)/100));
+  p.pct=+pct;if(ci.avulso>0)p.price=Math.round(ci.avulso*(1-(+pct)/100));
 }
 function stepBody(d){
   if(STEP===0)return `${F('Nome da agência','agency.name',d.agency.name)}${F('WhatsApp (com DDD, só números)','agency.whatsapp',d.agency.whatsapp)}
@@ -562,11 +578,12 @@ function setPath(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i+
 let tm;const draft=()=>{clearTimeout(tm);tm=setTimeout(()=>{try{localStorage.setItem('dp_draft',JSON.stringify(S))}catch(e){}},400)};
 $('#form').addEventListener('input',e=>{
   const el=e.target;
-  if(el.dataset.svc){toggleSvcIn(S,el);DIRTY=true;paint();draft();return}
+  if(el.dataset.svc){toggleSvcIn(S,el);DIRTY=true;updSum();paint();draft();return}
+  if(el.dataset.qty){setQty(S,el);DIRTY=true;updSum();paint();draft();return}
   const p=el.dataset.p;if(!p)return;
   let v=el.type==='checkbox'?el.checked:el.type==='radio'?+el.value:el.value;
   if(el.type==='number')v=v===''?0:+v;
-  DIRTY=true;if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);paint();draft();
+  DIRTY=true;if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);{const m=p.match(/^plans\.(\d+)\.price$/);if(m)S.plans[+m[1]].pct=null}paint();draft();
 });
 const newSvc=c=>({id:uid(),cid:c.id,on:true,title:c.title,desc:c.desc,price:c.price||0,type:c.type||'mensal'});
 $('#form').addEventListener('click',e=>{
@@ -584,15 +601,15 @@ $('#form').addEventListener('click',e=>{
     const j=S.plans.findIndex(x=>x.cid===k);
     if(j>=0){S.plans.splice(j,1);if(S.selected>=S.plans.length)S.selected=Math.max(0,S.plans.length-1)}
     else{const c=CAT.plans.find(x=>x.id===k);if(c){
-      const ids=(c.svc||[]).map(sid=>{let ps=S.services.find(x=>x.cid===sid);if(!ps){const cs=CAT.services.find(x=>x.id===sid);if(!cs)return null;ps=newSvc(cs);S.services.push(ps)}return ps.id}).filter(Boolean);
-      S.plans.push({id:uid(),cid:c.id,name:c.name,price:c.price,months:c.months||3,svc:ids,items:c.items||''});
+      const qty={};const ids=(c.svc||[]).map(sid=>{let ps=S.services.find(x=>x.cid===sid);if(!ps){const cs=CAT.services.find(x=>x.id===sid);if(!cs)return null;ps=newSvc(cs);S.services.push(ps)}if(c.qty&&c.qty[sid])qty[ps.id]=c.qty[sid];return ps.id}).filter(Boolean);
+      S.plans.push({id:uid(),cid:c.id,name:c.name,price:c.price,months:c.months||3,svc:ids,qty,pct:c.pct??null,items:c.items||''});
     }}
   }
   if(act==='disc')applyDisc(S,k,i);
   if(act==='mk'){const on=S.services.filter(x=>x.on);S.plans.push({id:uid(),name:'Combo '+(S.client.company||S.client.name||'personalizado'),price:0,months:3,svc:on.map(x=>x.id),items:''});applyDisc(S,S.plans.length-1,15);S.selected=S.plans.length-1}
   if(act==='add'){
     if(k==='services')S.services.push({id:uid(),on:true,title:'Novo serviço',desc:'',price:0,type:'mensal'});
-    if(k==='plans')S.plans.push({id:uid(),name:'Novo combo',price:0,months:3,svc:[],items:''});
+    if(k==='plans')S.plans.push({id:uid(),name:'Novo combo',price:0,months:3,svc:[],qty:{},pct:0,items:''});
     if(k==='extras')S.extras.push({id:uid(),label:'Item extra',price:0,type:'mensal'});
   }
   if(act==='del'){
@@ -793,9 +810,10 @@ function onCatLogo(e){
 $('#catform').addEventListener('input',e=>{
   const el=e.target;
   if(el.dataset.svc){toggleSvcIn(CAT,el);refreshCombos(CAT);return}
+  if(el.dataset.qty){setQty(CAT,el);refreshCombos(CAT);return}
   const p=el.dataset.p;if(!p)return;
   let v=el.value;if(el.type==='number')v=v===''?0:+v;
-  if(el.tagName==='TEXTAREA')grow(el);setPath(CAT,p,v);refreshCombos(CAT);
+  if(el.tagName==='TEXTAREA')grow(el);setPath(CAT,p,v);{const m=p.match(/^plans\.(\d+)\.price$/);if(m)CAT.plans[+m[1]].pct=null}refreshCombos(CAT);
 });
 $('#catform').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
@@ -804,7 +822,7 @@ $('#catform').addEventListener('click',e=>{
   if(act==='disc')applyDisc(CAT,k,i);
   if(act==='add'){
     if(k==='services')CAT.services.push({id:uid(),title:'Novo serviço',desc:'',price:0,type:'mensal'});
-    if(k==='plans')CAT.plans.push({id:uid(),name:'Novo combo',price:0,months:3,svc:[],items:''});
+    if(k==='plans')CAT.plans.push({id:uid(),name:'Novo combo',price:0,months:3,svc:[],qty:{},pct:0,items:''});
     if(k==='extras')CAT.extras.push({id:uid(),label:'Novo extra',price:0,type:'mensal'});
   }
   if(act==='del'){

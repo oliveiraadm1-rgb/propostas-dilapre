@@ -920,16 +920,17 @@ const STN={rascunho:'Rascunho',enviada:'Enviada',visualizada:'Visualizada',aceit
 const stOf=r=>{const s=r.status||'rascunho';return s==='enviada'&&r.views>0?'visualizada':s};
 const infoOf=r=>{try{const d=Object.assign(defaults(),r.data||{}),t=totals(d);
   const sv=d.services.filter(x=>x.on).map(x=>ttl(x.title));
-  const label=t.sel?`Combo ${ttl(t.sel.name)} · contrato mínimo de ${t.months} meses`:(sv.length?'Avulso: '+sv.slice(0,3).join(', ')+(sv.length>3?' +'+(sv.length-3):''):'Nenhum serviço incluído');
+  const label=t.sel?`Combo ${ttl(t.sel.name)}${t.months>0?' · contrato mínimo de '+t.months+' meses':''}`:(sv.length?'Avulso: '+sv.slice(0,3).join(', ')+(sv.length>3?' +'+(sv.length-3):''):'Nenhum serviço incluído');
   return{m:t.mt||0,u:t.u||0,label}}catch(e){return{m:0,u:0,label:''}}};
 const valChips=i=>(i.m>0?`<span class="chip val">${brl(i.m)}/mês</span>`:'')+(i.u>0?`<span class="chip val">${brl(i.u)} único</span>`:'')+(i.m<=0&&i.u<=0?'<span class="chip">Sem valor</span>':'');
 function drawLib(){
   const q=($('#libq').value||'').toLowerCase(),fd=d=>d?new Date(d).toLocaleDateString('pt-BR'):'';
   const grp={todas:()=>true,rascunho:s=>s==='rascunho',enviadas:s=>s==='enviada'||s==='visualizada',aceitas:s=>s==='aceita'};
   const L=LIB.filter(r=>((r.client||'')+' '+(r.title||'')).toLowerCase().includes(q)&&grp[LF](stOf(r)));
-  const open=LIB.filter(r=>['enviada','visualizada'].includes(stOf(r)));
-  const ot=open.map(infoOf),om=ot.reduce((a,x)=>a+x.m,0),ou=ot.reduce((a,x)=>a+x.u,0);
-  $('#lstat').innerHTML=`<div><small>Em aberto · ${open.length} ${open.length===1?'proposta':'propostas'}</small><b>${brl(om)}/mês</b>${ou>0?`<small>+ ${brl(ou)} em pagamentos únicos</small>`:''}</div><div><small>Aceitas</small><b>${LIB.filter(r=>stOf(r)==='aceita').length}</b><small>de ${LIB.length} no total</small></div>`;
+  const sumv=arr=>{const t=arr.map(infoOf);return{m:t.reduce((a,x)=>a+x.m,0),u:t.reduce((a,x)=>a+x.u,0)}};
+  const live=LIB.filter(r=>stOf(r)!=='recusada'),acc=LIB.filter(r=>stOf(r)==='aceita'),tl=sumv(live),ta=sumv(acc);
+  const sub=v=>v.u>0?`<small>+ ${brl(v.u)} em pagamentos únicos</small>`:'<small>Sem pagamentos únicos</small>';
+  $('#lstat').innerHTML=`<div><small>Total das propostas · ${live.length}</small><b>${brl(tl.m)}/mês</b>${sub(tl)}</div><div><small>Aceitas · ${acc.length}</small><b>${brl(ta.m)}/mês</b>${sub(ta)}</div>`;
   $('#lflt').innerHTML=[['todas','Todas'],['rascunho','Rascunhos'],['enviadas','Enviadas'],['aceitas','Aceitas']].map(([k,n])=>`<button class="${LF===k?'on':''}" data-lf="${k}">${n}</button>`).join('');
   $('#libsub').textContent=LIB.length?'Toque em Abrir para editar ou mude o status de cada proposta.':'Você ainda não salvou nenhuma proposta.';
   $('#libgrid').innerHTML=L.length?L.map(r=>{const st=stOf(r),dias=r.last_viewed_at?Math.floor((Date.now()-new Date(r.last_viewed_at))/864e5):0;

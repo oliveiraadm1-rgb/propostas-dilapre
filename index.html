@@ -671,6 +671,7 @@ const configured=!SB_URL.startsWith('COLE');
 const sb=(configured&&window.supabase)?window.supabase.createClient(SB_URL,SB_KEY):null;
 let curRow=null,curUrl='';
 const baseUrl=()=>location.href.split(/[?#]/)[0];
+const shareBase=()=>location.protocol==='file:'?baseUrl():location.origin+'/';
 
 async function refreshSaved(){
   const {data,error}=await sb.from('proposals').select('id,client,title,views').order('updated_at',{ascending:false});
@@ -708,7 +709,7 @@ $('#bPdf').onclick=toPdf;$('#vPdf').onclick=toPdf;
 $('#bLink').onclick=async()=>{
   const r=await saveCurrent();if(!r)return;
   sb.from('proposals').update({status:'enviada'}).eq('id',r.id).eq('status','rascunho').then(()=>{});
-  curUrl=baseUrl()+'?v='+r.public_id;$('#mLink').value=curUrl;
+  curUrl=shareBase()+'?v='+r.public_id;$('#mLink').value=curUrl;
   $('#mMsg').value=shareMsg(curUrl);
   $('#mWarn').innerHTML=location.protocol==='file:'?'<div class="warn">⚠ Você abriu o arquivo do computador. Use o endereço do site hospedado para gerar links que funcionem para o cliente.</div>':'';
   $('#modal').classList.add('on');
@@ -964,7 +965,7 @@ $('#libq').addEventListener('input',drawLib);
 $('#libgrid').addEventListener('click',async e=>{
   const o=e.target.closest('[data-lo]'),c=e.target.closest('[data-lc]'),d=e.target.closest('[data-ld]'),x=e.target.closest('[data-lx]');
   if(o)return openProposal(o.dataset.lo);
-  if(c){const u=baseUrl()+'?v='+c.dataset.lc;try{await navigator.clipboard.writeText(u)}catch(er){prompt('Copie o link:',u)}return toast('Link copiado ✓')}
+  if(c){const u=shareBase()+'?v='+c.dataset.lc;try{await navigator.clipboard.writeText(u)}catch(er){prompt('Copie o link:',u)}return toast('Link copiado ✓')}
   if(d){
     const {data:r,error}=await sb.from('proposals').select('data,client').eq('id',d.dataset.ld).single();
     if(error)return toast(error.message,true);

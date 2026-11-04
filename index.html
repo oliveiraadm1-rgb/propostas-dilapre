@@ -284,6 +284,8 @@ body.view .cover{min-height:250mm}
 .lstat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
 .lstat div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}.lstat small{display:block;color:var(--mut);font-size:12px}.lstat b{font-size:20px}
 .lflt{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}.lflt button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;font-family:inherit}.lflt button.on{background:#1f5eff;border-color:#1f5eff;color:#fff}
+.pc .inc{font-size:13px;color:var(--ink);margin-top:6px;overflow-wrap:anywhere}
+.chip.val{background:#e3f6ea;color:#1a7f45}
 .pc .fu{color:#a8650a;font-size:12px;font-weight:600;margin-top:6px}
 .pc select.stsel{font-size:12px;padding:4px 8px;border-radius:99px;margin-left:auto}
 .ck{flex-wrap:wrap}.ck span{min-width:150px}
@@ -916,19 +918,26 @@ async function openLibPage(){
 var LF='todas';
 const STN={rascunho:'Rascunho',enviada:'Enviada',visualizada:'Visualizada',aceita:'Aceita',recusada:'Recusada'};
 const stOf=r=>{const s=r.status||'rascunho';return s==='enviada'&&r.views>0?'visualizada':s};
-const valOf=r=>{try{return totals(Object.assign(defaults(),r.data||{})).mt||0}catch(e){return 0}};
+const infoOf=r=>{try{const d=Object.assign(defaults(),r.data||{}),t=totals(d);
+  const sv=d.services.filter(x=>x.on).map(x=>ttl(x.title));
+  const label=t.sel?`Combo ${ttl(t.sel.name)} · contrato mínimo de ${t.months} meses`:(sv.length?'Avulso: '+sv.slice(0,3).join(', ')+(sv.length>3?' +'+(sv.length-3):''):'Nenhum serviço incluído');
+  return{m:t.mt||0,u:t.u||0,label}}catch(e){return{m:0,u:0,label:''}}};
+const valChips=i=>(i.m>0?`<span class="chip val">${brl(i.m)}/mês</span>`:'')+(i.u>0?`<span class="chip val">${brl(i.u)} único</span>`:'')+(i.m<=0&&i.u<=0?'<span class="chip">Sem valor</span>':'');
 function drawLib(){
   const q=($('#libq').value||'').toLowerCase(),fd=d=>d?new Date(d).toLocaleDateString('pt-BR'):'';
   const grp={todas:()=>true,rascunho:s=>s==='rascunho',enviadas:s=>s==='enviada'||s==='visualizada',aceitas:s=>s==='aceita'};
   const L=LIB.filter(r=>((r.client||'')+' '+(r.title||'')).toLowerCase().includes(q)&&grp[LF](stOf(r)));
   const open=LIB.filter(r=>['enviada','visualizada'].includes(stOf(r)));
-  $('#lstat').innerHTML=`<div><small>Em aberto</small><b>${brl(open.reduce((a,r)=>a+valOf(r),0))}</b><small>${open.length} ${open.length===1?'proposta':'propostas'} /mês</small></div><div><small>Aceitas</small><b>${LIB.filter(r=>stOf(r)==='aceita').length}</b><small>de ${LIB.length} no total</small></div>`;
+  const ot=open.map(infoOf),om=ot.reduce((a,x)=>a+x.m,0),ou=ot.reduce((a,x)=>a+x.u,0);
+  $('#lstat').innerHTML=`<div><small>Em aberto · ${open.length} ${open.length===1?'proposta':'propostas'}</small><b>${brl(om)}/mês</b>${ou>0?`<small>+ ${brl(ou)} em pagamentos únicos</small>`:''}</div><div><small>Aceitas</small><b>${LIB.filter(r=>stOf(r)==='aceita').length}</b><small>de ${LIB.length} no total</small></div>`;
   $('#lflt').innerHTML=[['todas','Todas'],['rascunho','Rascunhos'],['enviadas','Enviadas'],['aceitas','Aceitas']].map(([k,n])=>`<button class="${LF===k?'on':''}" data-lf="${k}">${n}</button>`).join('');
   $('#libsub').textContent=LIB.length?'Toque em Abrir para editar ou mude o status de cada proposta.':'Você ainda não salvou nenhuma proposta.';
   $('#libgrid').innerHTML=L.length?L.map(r=>{const st=stOf(r),dias=r.last_viewed_at?Math.floor((Date.now()-new Date(r.last_viewed_at))/864e5):0;
+    const inf=infoOf(r);
     return `<div class="pc"><div style="display:flex;align-items:center;gap:8px"><b style="flex:1">${esc(r.client||'Sem cliente')}</b><span class="st st-${st}">${STN[st]}</span></div><div class="t2">${esc((r.title||'').split('\n')[0])}</div>
+    <div class="inc">${esc(inf.label)}</div>
     ${st==='visualizada'&&dias>=3?`<div class="fu">Visualizada há ${dias} dias, sem resposta. Que tal chamar o cliente?</div>`:''}
-    <div class="meta2"><span class="chip">${brl(valOf(r))}/mês</span><span class="chip ${r.views?'hot':''}">${r.views||0} ${r.views===1?'visualização':'visualizações'}</span><span class="chip">${fd(r.updated_at)}</span></div>
+    <div class="meta2">${valChips(inf)}<span class="chip ${r.views?'hot':''}">${r.views||0} ${r.views===1?'visualização':'visualizações'}</span><span class="chip">${fd(r.updated_at)}</span></div>
     <div class="pca"><button class="btn pri" data-lo="${r.id}">Abrir</button><button class="btn" data-lc="${r.public_id}">${ico('link')}Copiar link</button><button class="btn" data-ld="${r.id}">${ico('copy')}Duplicar</button><select class="stsel" data-ls="${r.id}" aria-label="Status">${Object.keys(STN).map(k=>`<option value="${k}" ${(r.status||'rascunho')===k?'selected':''}>${STN[k]}</option>`).join('')}</select><button class="btn ghost" data-lx="${r.id}" aria-label="Excluir">${ico('trash')}</button></div></div>`}).join(''):`<p class="empty">${LIB.length?'Nenhuma proposta encontrada.':'Crie sua primeira proposta pela aba Nova.'}</p>`;
 }
 $('#lflt').addEventListener('click',e=>{const b=e.target.closest('[data-lf]');if(b){LF=b.dataset.lf;drawLib()}});

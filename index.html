@@ -507,18 +507,29 @@ const comboRow=(p,i,services,rec,showRec)=>{const ci=comboInfo(p,services);
   <div class="disc">Desconto rápido sobre o avulso: ${[0,10,15,20].map(n=>`<button class="btn sm ghost" data-act="disc:${i}:${n}">${n?'−'+n+'%':'Soma'}</button>`).join('')}</div>
   <div class="cinfo" id="cinfo-${i}">${cinfoHTML(ci)}</div>
   ${T('Itens adicionais (um por linha, opcional)',`plans.${i}.items`,p.items,2)}</div>`};
+const svsOf=obj=>obj===S?S.services.filter(x=>x.on):obj.services;
+function lockPct(obj,pi){
+  const p=obj.plans[+pi];if(!p||p.pct!=null)return;
+  const ci=comboInfo(p,svsOf(obj));
+  p.pct=ci.avulso>0&&p.price>0&&p.price<=ci.avulso?(1-p.price/ci.avulso)*100:0;
+}
 function recalc(obj,pi){
-  const p=obj.plans[+pi];if(!p)return;
-  if(p.pct!=null)applyDisc(obj,pi,p.pct);
+  const p=obj.plans[+pi];if(!p)return;lockPct(obj,pi);applyDisc(obj,pi,p.pct);
   const inp=document.querySelector((obj===S?'#form':'#catform')+' [data-p="plans.'+pi+'.price"]');if(inp)inp.value=p.price;
 }
+function recalcAuto(obj){obj.plans.forEach((p,i)=>{if(p.pct!=null)recalc(obj,i)})}
+function priceEdited(obj,pi){
+  const p=obj.plans[+pi],ci=comboInfo(p,svsOf(obj));
+  p.pct=ci.avulso>0?(1-(+p.price||0)/ci.avulso)*100:0;
+}
+function dropSvc(obj,id){obj.plans.forEach((p,i)=>{if((p.svc||[]).includes(id)){lockPct(obj,i);p.svc=p.svc.filter(z=>z!==id);recalc(obj,i)}})}
 function toggleSvcIn(obj,el){
-  const [pi,sid]=el.dataset.svc.split(':');const pl=obj.plans[+pi];pl.svc=pl.svc||[];const k=pl.svc.indexOf(sid);
+  const [pi,sid]=el.dataset.svc.split(':');lockPct(obj,pi);const pl=obj.plans[+pi];pl.svc=pl.svc||[];const k=pl.svc.indexOf(sid);
   if(el.checked&&k<0)pl.svc.push(sid);if(!el.checked&&k>=0)pl.svc.splice(k,1);
   recalc(obj,pi);
 }
 function setQty(obj,el){
-  const [pi,sid]=el.dataset.qty.split(':');const pl=obj.plans[+pi];pl.qty=pl.qty||{};
+  const [pi,sid]=el.dataset.qty.split(':');lockPct(obj,pi);const pl=obj.plans[+pi];pl.qty=pl.qty||{};
   pl.qty[sid]=Math.max(1,Math.round(+el.value)||1);recalc(obj,pi);
 }
 function applyDisc(obj,idx,pct){
@@ -583,7 +594,7 @@ $('#form').addEventListener('input',e=>{
   const p=el.dataset.p;if(!p)return;
   let v=el.type==='checkbox'?el.checked:el.type==='radio'?+el.value:el.value;
   if(el.type==='number')v=v===''?0:+v;
-  DIRTY=true;if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);{const m=p.match(/^plans\.(\d+)\.price$/);if(m)S.plans[+m[1]].pct=null}paint();draft();
+  DIRTY=true;if(el.tagName==='TEXTAREA')grow(el);setPath(S,p,v);if(/^services\./.test(p)){recalcAuto(S);updSum()}{const m=p.match(/^plans\.(\d+)\.price$/);if(m)priceEdited(S,+m[1])}paint();draft();
 });
 const newSvc=c=>({id:uid(),cid:c.id,on:true,title:c.title,desc:c.desc,price:c.price||0,type:c.type||'mensal'});
 $('#form').addEventListener('click',e=>{
@@ -594,7 +605,7 @@ $('#form').addEventListener('click',e=>{
   DIRTY=true;
   if(act==='tsvc'){
     const j=S.services.findIndex(x=>x.cid===k);
-    if(j>=0){const id=S.services[j].id;S.services.splice(j,1);S.plans.forEach(p=>p.svc=(p.svc||[]).filter(z=>z!==id))}
+    if(j>=0){const id=S.services[j].id;dropSvc(S,id);S.services.splice(j,1)}
     else{const c=CAT.services.find(x=>x.id===k);if(c)S.services.push(newSvc(c))}
   }
   if(act==='tcombo'){
@@ -613,8 +624,7 @@ $('#form').addEventListener('click',e=>{
     if(k==='extras')S.extras.push({id:uid(),label:'Item extra',price:0,type:'mensal'});
   }
   if(act==='del'){
-    const id=k==='services'?(S.services[+i]||{}).id:null;S[k].splice(+i,1);
-    if(id)S.plans.forEach(p=>p.svc=(p.svc||[]).filter(z=>z!==id));
+    const id=k==='services'?(S.services[+i]||{}).id:null;if(id)dropSvc(S,id);S[k].splice(+i,1);
     if(k==='plans'&&S.selected>=S.plans.length)S.selected=Math.max(0,S.plans.length-1);
   }
   if(act==='rmlogo')S.agency.logo='';
@@ -780,6 +790,7 @@ function catBody(c){
     <button class="btn sm" data-act="add:extras">+ Extra</button>`;
 }
 function buildCat(){
+  CAT.plans.forEach((p,i)=>{lockPct(CAT,i);applyDisc(CAT,i,p.pct)});
   const c=CAT,m=CMETA[CSTEP];$('#catform').style.setProperty('--ac',c.brand.color||'#1f5eff');
   $('#catform').innerHTML=`<div class="wtop"><span class="wk">Meu catálogo · etapa ${CSTEP} de 4</span></div>
     <div class="prog">${CSTEPS.map((n,i)=>`<button class="seg ${i+1<=CSTEP?'on':''} ${i+1===CSTEP?'cur':''}" data-act="cgo:${i+1}"><span></span><em>${n}</em></button>`).join('')}</div>
@@ -813,7 +824,7 @@ $('#catform').addEventListener('input',e=>{
   if(el.dataset.qty){setQty(CAT,el);refreshCombos(CAT);return}
   const p=el.dataset.p;if(!p)return;
   let v=el.value;if(el.type==='number')v=v===''?0:+v;
-  if(el.tagName==='TEXTAREA')grow(el);setPath(CAT,p,v);{const m=p.match(/^plans\.(\d+)\.price$/);if(m)CAT.plans[+m[1]].pct=null}refreshCombos(CAT);
+  if(el.tagName==='TEXTAREA')grow(el);setPath(CAT,p,v);if(/^services\./.test(p))recalcAuto(CAT);{const m=p.match(/^plans\.(\d+)\.price$/);if(m)priceEdited(CAT,+m[1])}refreshCombos(CAT);
 });
 $('#catform').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const [act,k,i]=b.dataset.act.split(':');
@@ -826,8 +837,7 @@ $('#catform').addEventListener('click',e=>{
     if(k==='extras')CAT.extras.push({id:uid(),label:'Novo extra',price:0,type:'mensal'});
   }
   if(act==='del'){
-    const id=k==='services'?(CAT.services[+i]||{}).id:null;CAT[k].splice(+i,1);
-    if(id)CAT.plans.forEach(p=>p.svc=(p.svc||[]).filter(z=>z!==id));
+    const id=k==='services'?(CAT.services[+i]||{}).id:null;if(id)dropSvc(CAT,id);CAT[k].splice(+i,1);
   }
   buildCat();
 });

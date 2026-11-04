@@ -274,6 +274,18 @@ body.view .cover{min-height:250mm}
 #vprog,.hint{display:none!important}
 .preview{display:block!important}
 }
+.row .top label b{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
+.offer{display:flex;flex-direction:column;gap:6px;align-items:flex-start;background:#e6eeff;border:1.5px solid #bcd0ff;border-radius:14px;padding:14px;margin-top:16px}
+.offer b{font-size:15px}.offer span{font-size:13px;color:var(--mut)}
+.row .top .pr{font-size:13px;font-weight:700;white-space:nowrap}
+.row details summary{cursor:pointer;color:#1f5eff;font-size:13px;font-weight:600;margin:8px 0}
+.st{border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700}
+.st-rascunho{background:#f3f5fb;color:var(--mut)}.st-enviada{background:#e6eeff;color:#1f5eff}.st-visualizada{background:#fff4dc;color:#a8650a}.st-aceita{background:#e3f6ea;color:#1a7f45}.st-recusada{background:#fdeaea;color:#b42318}
+.lstat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.lstat div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}.lstat small{display:block;color:var(--mut);font-size:12px}.lstat b{font-size:20px}
+.lflt{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}.lflt button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;font-family:inherit}.lflt button.on{background:#1f5eff;border-color:#1f5eff;color:#fff}
+.pc .fu{color:#a8650a;font-size:12px;font-weight:600;margin-top:6px}
+.pc select.stsel{font-size:12px;padding:4px 8px;border-radius:99px;margin-left:auto}
 </style>
 </head>
 <body>
@@ -289,7 +301,9 @@ body.view .cover{min-height:250mm}
 <div id="libpage"><div class="cwrap">
   <div class="wtop"><span class="wk">Propostas</span></div>
   <h2 class="wt">Suas propostas</h2><p class="ws" id="libsub"></p>
+  <div class="lstat" id="lstat"></div>
   <input id="libq" class="libq" placeholder="Buscar por cliente ou título…">
+  <div class="lflt" id="lflt"></div>
   <div id="libgrid"></div>
 </div></div>
 <div class="topbar">
@@ -448,18 +462,17 @@ function paint(){
 const SINGLE=['agency.whatsapp','agency.email','agency.site','date','ctaBtn'];
 const F=(l,p,v,t='text')=>(t==='text'&&!SINGLE.includes(p))?`<label class="f"><span>${l}</span><textarea class="ag" rows="1" data-p="${p}">${esc(v)}</textarea></label>`:`<label class="f"><span>${l}</span><input type="${t}" data-p="${p}" value="${esc(v)}"></label>`;
 const T=(l,p,v,r=3)=>`<label class="f"><span>${l}</span><textarea class="ag" rows="${r}" data-p="${p}">${esc(v)}</textarea></label>`;
-const STEPS=['Cliente','Serviços','Combos','Investimento','Condições','Revisar'];
+const STEPS=['Cliente','O que vender','Investimento','Condições','Revisar'];
 var STEP=1,LAST=1,DIRTY=false;
 const META={
  0:['Sua marca','Seus dados aparecem em todas as propostas.'],
  1:['Para quem é a proposta?','Dados do cliente e a mensagem de abertura.'],
- 2:['Quais serviços?','Toque nos serviços do catálogo ou crie um personalizado. Cada um tem o seu valor avulso.'],
- 3:['Vai oferecer combos?','Combo junta serviços com preço melhor e contrato mínimo. Sem combo, a proposta mostra só os avulsos.'],
- 4:['Quanto fica o investimento?','Confira o total, adicione extras e desconto.'],
- 5:['Condições e fechamento','Regras de pagamento, próximos passos e o convite final.'],
- 6:['Revise e envie','Confira como o cliente vai ver. Depois salve e gere o link.']};
+ 2:['O que vender','Marque os serviços. Com 2 ou mais, você pode oferecer um combo com preço melhor e contrato mínimo.'],
+ 3:['Quanto fica o investimento?','Confira o total, adicione extras e desconto.'],
+ 4:['Condições e fechamento','Regras de pagamento, próximos passos e o convite final.'],
+ 5:['Revise e envie','Confira como o cliente vai ver. Depois salve e gere o link.']};
 function goStep(k){
-  if(k==='next')STEP=Math.min(6,STEP+1);else if(k==='prev')STEP=Math.max(1,STEP-1);
+  if(k==='next')STEP=Math.min(5,STEP+1);else if(k==='prev')STEP=Math.max(1,STEP-1);
   else if(k==='brand'){openCat(1);return}else if(k==='back')STEP=LAST||1;else STEP=+k;
   buildForm();window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -507,21 +520,20 @@ function stepBody(d){
     <div class="two">${F('Data','date',d.date)}${F('Validade (dias)','validity',d.validity,'number')}</div>
     ${T('Mensagem de abertura','intro',d.intro,5)}`;
   if(STEP===2){
-    const cat=(CAT&&CAT.services)||[];
-    const chips=cat.length?`<div class="lbl">Do seu catálogo · toque para incluir</div><div class="chips">${cat.map(c=>{const on=d.services.some(x=>x.cid===c.id);return `<button class="chip2 ${on?'on':''}" data-act="tsvc:${c.id}"><b>${esc(ttl(c.title))}</b><small>${+c.price>0?brl(c.price)+(c.type==='unico'?' único':'/mês'):'sem valor'}</small><i>${on?'✓':'+'}</i></button>`}).join('')}</div>`:`<p class="note2">Seu catálogo está vazio. Cadastre seus serviços na aba Catálogo ou crie um personalizado abaixo.</p>`;
-    return `${chips}<div class="lbl" style="margin-top:20px">Serviços desta proposta</div><div class="sum" id="sub2"></div>
-      ${d.services.length?d.services.map((x,i)=>serviceRow(x,i,true)).join(''):'<p class="ws">Nenhum serviço ainda. Toque em um serviço acima.</p>'}
-      <button class="btn sm" data-act="add:services">+ Serviço personalizado</button>`;
+    const cs=(CAT&&CAT.services)||[],cp=(CAT&&CAT.plans)||[],on=d.services.filter(x=>x.on);
+    const chips=cs.length?`<div class="lbl">Serviços do catálogo · toque para incluir</div><div class="chips">${cs.map(c=>{const o=d.services.some(x=>x.cid===c.id);return `<button class="chip2 ${o?'on':''}" data-act="tsvc:${c.id}"><b>${esc(ttl(c.title))}</b><small>${+c.price>0?brl(c.price)+(c.type==='unico'?' único':'/mês'):'sem valor'}</small><i>${o?'✓':'+'}</i></button>`}).join('')}</div>`:`<p class="note2">Seu catálogo está vazio. Cadastre seus serviços na aba Catálogo ou crie um personalizado abaixo.</p>`;
+    const pre=cp.length?`<div class="lbl" style="margin-top:16px">Combos prontos · um toque marca os serviços</div><div class="chips">${cp.map(c=>{const o=d.plans.some(x=>x.cid===c.id);return `<button class="chip2 ${o?'on':''}" data-act="tcombo:${c.id}"><b>${esc(ttl(c.name))}</b><small>${brl(c.price)}/mês · ${c.months||3} meses</small><i>${o?'✓':'+'}</i></button>`}).join('')}</div>`:'';
+    const svcs=d.services.map((x,i)=>`<div class="row"><div class="top"><label><input type="checkbox" data-p="services.${i}.on" ${x.on?'checked':''}> <b>${esc(ttl(x.title)||'Serviço')}</b></label><span class="pr">${+x.price>0?brl(x.price)+(x.type==='unico'?' único':'/mês'):'sem valor'}</span></div>
+      <details><summary>Editar valor e descrição</summary>${F('Nome do serviço',`services.${i}.title`,x.title)}${T('O que está incluso',`services.${i}.desc`,x.desc,3)}
+      <div class="two">${F('Valor avulso (R$)',`services.${i}.price`,x.price??0,'number')}<label class="f"><span>Cobrança</span><select data-p="services.${i}.type"><option value="mensal" ${x.type!=='unico'?'selected':''}>Mensal</option><option value="unico" ${x.type==='unico'?'selected':''}>Pagamento único</option></select></label></div>
+      <button class="btn sm ghost" data-act="del:services:${i}">Remover serviço</button></details></div>`).join('');
+    const combo=d.plans.length?`<div class="lbl" style="margin-top:20px">Combo</div>${d.plans.map((p,i)=>comboRow(p,i,on,d.selected===i,d.plans.length>1)).join('')}<button class="btn sm" data-act="add:plans">+ Outro combo</button>`
+      :(on.length>=2?`<div class="offer"><b>Oferecer como combo?</b><span>Junta os ${on.length} serviços marcados com desconto e contrato mínimo.</span><button class="btn pri sm" data-act="mk">Criar combo</button></div>`:'')
+      +(on.length?`<p class="note2" style="margin-top:12px">${d.plans.length?'':'Sem combo, o cliente vê só os serviços avulsos, sem contrato mínimo.'}</p>`:'');
+    return `${chips}${pre}<div class="lbl" style="margin-top:20px">Na proposta</div><div class="sum" id="sub2"></div>${d.services.length?svcs:'<p class="ws">Nenhum serviço ainda. Toque em um serviço acima.</p>'}
+      <button class="btn sm" data-act="add:services">+ Serviço personalizado</button>${combo}`;
   }
-  if(STEP===3){
-    const cat=(CAT&&CAT.plans)||[];
-    const chips=cat.length?`<div class="lbl">Seus combos · toque para incluir</div><div class="chips">${cat.map(c=>{const on=d.plans.some(x=>x.cid===c.id);return `<button class="chip2 ${on?'on':''}" data-act="tcombo:${c.id}"><b>${esc(ttl(c.name))}</b><small>${brl(c.price)}/mês · ${c.months||3} meses</small><i>${on?'✓':'+'}</i></button>`}).join('')}</div>`:'';
-    return `<p class="note2">Sem combo, o cliente vê só os serviços avulsos. Com combo, o contrato tem permanência mínima.</p>${chips}
-      ${d.plans.length?'<div class="lbl" style="margin-top:20px">Combos desta proposta</div>':''}
-      ${d.plans.map((p,i)=>comboRow(p,i,d.services.filter(x=>x.on),d.selected===i,true)).join('')}
-      <button class="btn sm" data-act="add:plans">+ Montar combo aqui</button>`;
-  }
-  if(STEP===4)return `<div class="sum" id="sumbox"></div>
+  if(STEP===3)return `<div class="sum" id="sumbox"></div>
     <button class="btn sm ghost" data-act="pick:extras" style="margin-bottom:12px">📚 Puxar do catálogo</button>
     ${d.extras.map((x,i)=>`<div class="row"><div class="top"><span>Item extra</span><button class="btn sm ghost" data-act="del:extras:${i}">Remover</button></div>
       ${F('Descrição',`extras.${i}.label`,x.label)}
@@ -529,20 +541,20 @@ function stepBody(d){
       <label class="f"><span>Cobrança</span><select data-p="extras.${i}.type"><option value="mensal" ${x.type!=='unico'?'selected':''}>Mensal</option><option value="unico" ${x.type==='unico'?'selected':''}>Pagamento único</option></select></label></div></div>`).join('')}
     <button class="btn sm" data-act="add:extras">+ Item extra</button>
     <div style="height:14px"></div>${F('Desconto sobre o mensal (%)','discount',d.discount,'number')}`;
-  if(STEP===5)return `${T('Condições (uma por linha)','terms',d.terms,5)}${T('Próximos passos (um por linha)','steps',d.steps,4)}
+  if(STEP===4)return `${T('Condições (uma por linha)','terms',d.terms,5)}${T('Próximos passos (um por linha)','steps',d.steps,4)}
     ${F('Título do final','ctaTitle',d.ctaTitle)}${T('Texto do final','ctaText',d.ctaText,2)}${F('Texto do botão','ctaBtn',d.ctaBtn)}`;
   return `<div class="acts"><button class="btn" data-act="do:save">💾 Salvar proposta</button><button class="btn pri" data-act="do:link">🔗 Gerar link para o cliente</button><button class="btn" data-act="do:pdf">⬇ Baixar PDF</button><button class="btn ghost" data-act="do:dup">⧉ Duplicar</button></div>
     <p class="ws" style="margin:14px 0 0">A prévia da proposta está logo abaixo. Para mudar algo, volte pela barra de etapas.</p>`;
 }
 function buildForm(){
   const d=S;$('#form').style.setProperty('--ac',d.agency.color||'#1f5eff');
-  document.body.classList.toggle('rev',STEP===6);
+  document.body.classList.toggle('rev',STEP===5);
   const m=META[STEP];
   const head=STEP===0?`<div class="wtop"><span class="wk">Configurações</span></div>`:
-   `<div class="wtop"><span class="wk">Etapa ${STEP} de 6</span><button class="btn sm ghost" data-act="go:brand">⚙ Minha marca</button></div>
+   `<div class="wtop"><span class="wk">Etapa ${STEP} de 5</span><button class="btn sm ghost" data-act="go:brand">⚙ Minha marca</button></div>
     <div class="prog">${STEPS.map((n,i)=>`<button class="seg ${i+1<=STEP?'on':''} ${i+1===STEP?'cur':''}" data-act="go:${i+1}"><span></span><em>${n}</em></button>`).join('')}</div>`;
   const nav=STEP===0?`<div class="wnav"><span></span><button class="btn pri" data-act="go:back">Concluir</button></div>`:
-    `<div class="wnav">${STEP>1?'<button class="btn ghost" data-act="go:prev">← Voltar</button>':'<span></span>'}${STEP<6?'<button class="btn pri" data-act="go:next">Continuar →</button>':'<span></span>'}</div>`;
+    `<div class="wnav">${STEP>1?'<button class="btn ghost" data-act="go:prev">← Voltar</button>':'<span></span>'}${STEP<5?'<button class="btn pri" data-act="go:next">Continuar →</button>':'<span></span>'}</div>`;
   $('#form').innerHTML=`${head}<div class="wcard step"><h2 class="wt">${m[0]}</h2><p class="ws">${m[1]}</p>${stepBody(d)}</div>${nav}`;
   $('#logo')?.addEventListener('change',onLogo);growAll();updSum();
 }
@@ -577,6 +589,7 @@ $('#form').addEventListener('click',e=>{
     }}
   }
   if(act==='disc')applyDisc(S,k,i);
+  if(act==='mk'){const on=S.services.filter(x=>x.on);S.plans.push({id:uid(),name:'Combo '+(S.client.company||S.client.name||'personalizado'),price:0,months:3,svc:on.map(x=>x.id),items:''});applyDisc(S,S.plans.length-1,15);S.selected=S.plans.length-1}
   if(act==='add'){
     if(k==='services')S.services.push({id:uid(),on:true,title:'Novo serviço',desc:'',price:0,type:'mensal'});
     if(k==='plans')S.plans.push({id:uid(),name:'Novo combo',price:0,months:3,svc:[],items:''});
@@ -641,6 +654,7 @@ $('#bPdf').onclick=toPdf;$('#vPdf').onclick=toPdf;
 
 $('#bLink').onclick=async()=>{
   const r=await saveCurrent();if(!r)return;
+  sb.from('proposals').update({status:'enviada'}).eq('id',r.id).eq('status','rascunho').then(()=>{});
   curUrl=baseUrl()+'?v='+r.public_id;$('#mLink').value=curUrl;
   $('#mWarn').innerHTML=location.protocol==='file:'?'<div class="warn">⚠ Você abriu o arquivo do computador. Use o endereço do site hospedado para gerar links que funcionem para o cliente.</div>':'';
   $('#modal').classList.add('on');
@@ -667,7 +681,7 @@ async function startApp(){
   document.body.classList.remove('login');
   
   try{await loadCat();if(CAT.brand)S.agency=Object.assign({},CAT.brand);cacheBrand()}catch(e){}
-  buildForm();paint();refreshSaved();goHome();
+  buildForm();paint();refreshSaved();openLibPage();
 }
 function renderLoginBrand(){
   let b={};try{b=JSON.parse(localStorage.getItem('dp_brand')||'{}')}catch(e){}
@@ -853,17 +867,31 @@ let LIB=[];
 async function openLibPage(){
   document.body.classList.remove('cat','home');document.body.classList.add('lib');
   $('#libgrid').innerHTML='<p class="empty">Carregando…</p>';
-  const {data}=await sb.from('proposals').select('id,public_id,client,title,views,last_viewed_at,updated_at').order('updated_at',{ascending:false});
+  const {data}=await sb.from('proposals').select('id,public_id,client,title,views,last_viewed_at,updated_at,status,data').order('updated_at',{ascending:false});
   LIB=data||[];drawLib();window.scrollTo(0,0);
 }
+var LF='todas';
+const STN={rascunho:'Rascunho',enviada:'Enviada',visualizada:'Visualizada',aceita:'Aceita',recusada:'Recusada'};
+const stOf=r=>{const s=r.status||'rascunho';return s==='enviada'&&r.views>0?'visualizada':s};
+const valOf=r=>{try{return totals(Object.assign(defaults(),r.data||{})).mt||0}catch(e){return 0}};
 function drawLib(){
   const q=($('#libq').value||'').toLowerCase(),fd=d=>d?new Date(d).toLocaleDateString('pt-BR'):'';
-  const L=LIB.filter(r=>((r.client||'')+' '+(r.title||'')).toLowerCase().includes(q));
-  $('#libsub').textContent=LIB.length?`${LIB.length} ${LIB.length===1?'proposta salva':'propostas salvas'}. Toque em Abrir para editar.`:'Você ainda não salvou nenhuma proposta.';
-  $('#libgrid').innerHTML=L.length?L.map(r=>`<div class="pc"><b>${esc(r.client||'Sem cliente')}</b><div class="t2">${esc((r.title||'').split('\n')[0])}</div>
-    <div class="meta2"><span class="chip">Atualizada em ${fd(r.updated_at)}</span><span class="chip ${r.views?'hot':''}">${r.views||0} ${r.views===1?'visualização':'visualizações'}${r.last_viewed_at?' · última em '+fd(r.last_viewed_at):''}</span></div>
-    <div class="pca"><button class="btn pri" data-lo="${r.id}">Abrir</button><button class="btn" data-lc="${r.public_id}">${ico('link')}Copiar link</button><button class="btn" data-ld="${r.id}">${ico('copy')}Duplicar</button><button class="btn ghost" data-lx="${r.id}" aria-label="Excluir">${ico('trash')}</button></div></div>`).join(''):`<p class="empty">${LIB.length?'Nenhuma proposta encontrada.':'Crie sua primeira proposta pela aba Nova.'}</p>`;
+  const grp={todas:()=>true,rascunho:s=>s==='rascunho',enviadas:s=>s==='enviada'||s==='visualizada',aceitas:s=>s==='aceita'};
+  const L=LIB.filter(r=>((r.client||'')+' '+(r.title||'')).toLowerCase().includes(q)&&grp[LF](stOf(r)));
+  const open=LIB.filter(r=>['enviada','visualizada'].includes(stOf(r)));
+  $('#lstat').innerHTML=`<div><small>Em aberto</small><b>${brl(open.reduce((a,r)=>a+valOf(r),0))}</b><small>${open.length} ${open.length===1?'proposta':'propostas'} /mês</small></div><div><small>Aceitas</small><b>${LIB.filter(r=>stOf(r)==='aceita').length}</b><small>de ${LIB.length} no total</small></div>`;
+  $('#lflt').innerHTML=[['todas','Todas'],['rascunho','Rascunhos'],['enviadas','Enviadas'],['aceitas','Aceitas']].map(([k,n])=>`<button class="${LF===k?'on':''}" data-lf="${k}">${n}</button>`).join('');
+  $('#libsub').textContent=LIB.length?'Toque em Abrir para editar ou mude o status de cada proposta.':'Você ainda não salvou nenhuma proposta.';
+  $('#libgrid').innerHTML=L.length?L.map(r=>{const st=stOf(r),dias=r.last_viewed_at?Math.floor((Date.now()-new Date(r.last_viewed_at))/864e5):0;
+    return `<div class="pc"><div style="display:flex;align-items:center;gap:8px"><b style="flex:1">${esc(r.client||'Sem cliente')}</b><span class="st st-${st}">${STN[st]}</span></div><div class="t2">${esc((r.title||'').split('\n')[0])}</div>
+    ${st==='visualizada'&&dias>=3?`<div class="fu">Visualizada há ${dias} dias, sem resposta. Que tal chamar o cliente?</div>`:''}
+    <div class="meta2"><span class="chip">${brl(valOf(r))}/mês</span><span class="chip ${r.views?'hot':''}">${r.views||0} ${r.views===1?'visualização':'visualizações'}</span><span class="chip">${fd(r.updated_at)}</span></div>
+    <div class="pca"><button class="btn pri" data-lo="${r.id}">Abrir</button><button class="btn" data-lc="${r.public_id}">${ico('link')}Copiar link</button><button class="btn" data-ld="${r.id}">${ico('copy')}Duplicar</button><select class="stsel" data-ls="${r.id}" aria-label="Status">${Object.keys(STN).map(k=>`<option value="${k}" ${(r.status||'rascunho')===k?'selected':''}>${STN[k]}</option>`).join('')}</select><button class="btn ghost" data-lx="${r.id}" aria-label="Excluir">${ico('trash')}</button></div></div>`}).join(''):`<p class="empty">${LIB.length?'Nenhuma proposta encontrada.':'Crie sua primeira proposta pela aba Nova.'}</p>`;
 }
+$('#lflt').addEventListener('click',e=>{const b=e.target.closest('[data-lf]');if(b){LF=b.dataset.lf;drawLib()}});
+$('#libgrid').addEventListener('change',async e=>{const el=e.target.closest('[data-ls]');if(!el)return;
+  const {error}=await sb.from('proposals').update({status:el.value}).eq('id',el.dataset.ls);
+  if(error)return toast(error.message,true);const r=LIB.find(x=>x.id===el.dataset.ls);if(r)r.status=el.value;drawLib();toast('Status atualizado ✓')});
 $('#libq').addEventListener('input',drawLib);
 $('#libgrid').addEventListener('click',async e=>{
   const o=e.target.closest('[data-lo]'),c=e.target.closest('[data-lc]'),d=e.target.closest('[data-ld]'),x=e.target.closest('[data-lx]');
